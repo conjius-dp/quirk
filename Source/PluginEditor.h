@@ -75,19 +75,12 @@ private:
     QuirkAudioProcessor& processorRef;
     ConjusKnobLookAndFeel conjusLAF;
 
-    AnimatedSlider gainSlider;
     AnimatedSlider volumeSlider;
-    juce::Label gainLabel   { {}, "GAIN" };
     juce::Label volumeLabel { {}, "VOLUME" };
 
     BypassButton bypassButton;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
-
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volumeAttachment;
-
-    juce::TextButton symButton;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> symAttachment;
 
     juce::Image logoImage;
 
@@ -95,8 +88,6 @@ private:
 
     juce::Rectangle<int> logoBounds;
     juce::Rectangle<int> graphBounds;
-    float lastGraphGain   = -1.0f;
-    float lastGraphVolume = -1.0f;
     bool  logoHoverTarget   = false;
     float logoHoverProgress = 0.0f;
 
@@ -106,14 +97,12 @@ private:
         double targetValue = 0.0;
         double currentValue = 0.0;
     };
-    SliderAnimation gainAnim;
     SliderAnimation volumeAnim;
 
     void startSnapAnimation(juce::Slider& slider, SliderAnimation& anim);
     void updateSnapAnimation(juce::Slider& slider, SliderAnimation& anim);
 
     int lastCurveVersion = -1;
-    bool lastSymmetric = true;
 
     struct GraphCoords
     {

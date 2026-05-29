@@ -1,6 +1,5 @@
 #include "DSP/Oscillator.h"
 #include <algorithm>
-#include <cmath>
 
 void Oscillator::prepare(double sampleRate)
 {
@@ -18,28 +17,13 @@ void Oscillator::noteOn(int midiNote, float velocity)
 
 void Oscillator::noteOff(int midiNote)
 {
-    if (midiNote == currentNote_)
+    if (midiNote == currentNote_ || midiNote < 0)
         noteActive_ = false;
 }
 
 double Oscillator::midiNoteToFreq(int note)
 {
     return 440.0 * std::pow(2.0, (note - 69) / 12.0);
-}
-
-float Oscillator::polyBlep(double t, double dt)
-{
-    if (t < dt)
-    {
-        double n = t / dt;
-        return static_cast<float>(n + n - n * n - 1.0);
-    }
-    if (t > 1.0 - dt)
-    {
-        double n = (t - 1.0) / dt;
-        return static_cast<float>(n * n + n + n + 1.0);
-    }
-    return 0.0f;
 }
 
 float Oscillator::lookupLUT(float x, const float* lut, const float* leftLut, int lutSize)
@@ -60,7 +44,7 @@ float Oscillator::lookupLUT(float x, const float* lut, const float* leftLut, int
 
 void Oscillator::renderBlock(float* output, int numSamples,
                               const float* lut, const float* leftLut, int lutSize,
-                              float gain, float volume)
+                              float volume)
 {
     if (!noteActive_)
     {
@@ -69,15 +53,11 @@ void Oscillator::renderBlock(float* output, int numSamples,
     }
 
     const float amp = velocity_ * volume;
-    const float g = std::pow(100.0f, gain / 100.0f);
 
     for (int i = 0; i < numSamples; ++i)
     {
-        float saw = static_cast<float>(2.0 * phase_ - 1.0);
-        saw -= polyBlep(phase_, phaseIncrement_);
-
-        float shaped = lookupLUT(std::clamp(saw * g, -1.0f, 1.0f), lut, leftLut, lutSize);
-        output[i] = shaped * amp;
+        float x = static_cast<float>(2.0 * phase_ - 1.0);
+        output[i] = lookupLUT(x, lut, leftLut, lutSize) * amp;
 
         phase_ += phaseIncrement_;
         if (phase_ >= 1.0) phase_ -= 1.0;

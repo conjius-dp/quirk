@@ -51,7 +51,6 @@ public:
     const BezierCurve& getBezierCurve() const { return bezierCurve_; }
     const BezierCurve& getLeftBezierCurve() const { return leftBezierCurve_; }
     void rebuildLUT();
-    bool isSymmetric() const { return apvts.getRawParameterValue("asymmetric")->load() < 0.5f; }
     std::atomic<int> curveVersion_ { 0 };
 
     BezierCurve::SlotValues readSlotValues(const juce::String& prefix) const;

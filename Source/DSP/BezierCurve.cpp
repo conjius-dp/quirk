@@ -6,8 +6,8 @@ BezierCurve::BezierCurve() = default;
 void BezierCurve::reset()
 {
     points_.clear();
-    startOut_ = {1.0f / 3.0f, 1.0f / 3.0f};
-    endIn_ = {-1.0f / 3.0f, -1.0f / 3.0f};
+    startOut_ = {1.0f / 3.0f, -1.0f};
+    endIn_ = {-1.0f / 3.0f, -1.0f};
 }
 
 int BezierCurve::addPoint(float x, float y)
@@ -133,7 +133,7 @@ void BezierCurve::moveEndInHandle(float dx, float dy)
     float prevX = points_.empty() ? 0.0f : points_.back().x;
     float distPrev = 1.0f - prevX;
     endIn_.dx = std::clamp(dx, -distPrev, 0.0f);
-    endIn_.dy = std::clamp(dy, -1.0f - 1.0f, 1.0f - 1.0f);
+    endIn_.dy = std::clamp(dy, -1.0f, 1.0f);
 }
 
 float BezierCurve::cubicBezier(float t, float p0, float p1, float p2, float p3)
@@ -194,7 +194,7 @@ std::vector<BezierCurve::Segment> BezierCurve::getSegments() const
     for (auto& pt : points_)
         knots.push_back({pt.x, pt.y, pt.in.dx, pt.in.dy, pt.out.dx, pt.out.dy});
 
-    knots.push_back({1.0f, 1.0f, endIn_.dx, endIn_.dy, 0.0f, 0.0f});
+    knots.push_back({1.0f, 0.0f, endIn_.dx, endIn_.dy, 0.0f, 0.0f});
 
     for (size_t i = 0; i + 1 < knots.size(); ++i)
     {
@@ -232,7 +232,7 @@ float BezierCurve::evaluate(float x) const
 
     auto segs = getSegments();
     if (segs.empty())
-        return x;
+        return 0.0f;
 
     for (auto& seg : segs)
     {
@@ -250,7 +250,7 @@ void BezierCurve::generateLUT(float* buffer) const
     if (segs.empty())
     {
         for (int i = 0; i < kLutSize; ++i)
-            buffer[i] = static_cast<float>(i) / static_cast<float>(kLutSize - 1);
+            buffer[i] = 0.0f;
         return;
     }
 

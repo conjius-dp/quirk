@@ -10,15 +10,15 @@ public:
 
     void runTest() override
     {
-        beginTest("default state is identity line");
+        beginTest("default state is negative arch for sine waveform");
         {
             BezierCurve curve;
             expectEquals(curve.getNumPoints(), 0);
             expectWithinAbsoluteError(curve.evaluate(0.0f), 0.0f, 0.001f);
-            expectWithinAbsoluteError(curve.evaluate(0.5f), 0.5f, 0.001f);
-            expectWithinAbsoluteError(curve.evaluate(1.0f), 1.0f, 0.001f);
-            expectWithinAbsoluteError(curve.evaluate(0.25f), 0.25f, 0.001f);
-            expectWithinAbsoluteError(curve.evaluate(0.75f), 0.75f, 0.001f);
+            expectWithinAbsoluteError(curve.evaluate(0.5f), -0.75f, 0.02f);
+            expectWithinAbsoluteError(curve.evaluate(1.0f), 0.0f, 0.001f);
+            expect(curve.evaluate(0.25f) < -0.4f);
+            expect(curve.evaluate(0.75f) < -0.4f);
         }
 
         beginTest("add point increases count");
@@ -121,22 +121,19 @@ public:
                    "outgoing handle should not exceed end point");
         }
 
-        beginTest("LUT generation identity");
+        beginTest("LUT generation default negative arch");
         {
             BezierCurve curve;
             float lut[BezierCurve::kLutSize];
             curve.generateLUT(lut);
 
             expectWithinAbsoluteError(lut[0], 0.0f, 0.001f);
-            expectWithinAbsoluteError(lut[BezierCurve::kLutSize - 1], 1.0f, 0.001f);
+            expectWithinAbsoluteError(lut[BezierCurve::kLutSize - 1], 0.0f, 0.001f);
 
             int mid = BezierCurve::kLutSize / 2;
-            float expectedMid = static_cast<float>(mid) / static_cast<float>(BezierCurve::kLutSize - 1);
-            expectWithinAbsoluteError(lut[mid], expectedMid, 0.002f);
+            expectWithinAbsoluteError(lut[mid], -0.75f, 0.02f);
 
-            for (int i = 1; i < BezierCurve::kLutSize; ++i)
-                expect(lut[i] >= lut[i - 1] - 0.001f,
-                       "default LUT should be monotonically non-decreasing");
+            expect(lut[mid] < lut[0], "waveform should dip below endpoints");
         }
 
         beginTest("LUT generation with user point");
@@ -151,17 +148,17 @@ public:
                    "LUT at x=0.3 should reflect the high y-value of the user point");
 
             expectWithinAbsoluteError(lut[0], 0.0f, 0.001f);
-            expectWithinAbsoluteError(lut[BezierCurve::kLutSize - 1], 1.0f, 0.001f);
+            expectWithinAbsoluteError(lut[BezierCurve::kLutSize - 1], 0.0f, 0.001f);
         }
 
-        beginTest("lookupWithGain identity");
+        beginTest("lookupWithGain default negative arch");
         {
             BezierCurve curve;
             float lut[BezierCurve::kLutSize];
             curve.generateLUT(lut);
 
             float result = BezierCurve::lookupWithGain(0.5f, 1.0f, lut, BezierCurve::kLutSize);
-            expectWithinAbsoluteError(result, 0.5f, 0.01f);
+            expectWithinAbsoluteError(result, -0.75f, 0.02f);
         }
 
         beginTest("lookupWithGain symmetry");
@@ -183,7 +180,7 @@ public:
             curve.generateLUT(lut);
 
             float result = BezierCurve::lookupWithGain(0.5f, 100.0f, lut, BezierCurve::kLutSize);
-            expectWithinAbsoluteError(result, 1.0f, 0.01f);
+            expectWithinAbsoluteError(result, 0.0f, 0.01f);
         }
 
         beginTest("lookupWithGain zero input");
@@ -196,16 +193,18 @@ public:
             expectWithinAbsoluteError(result, 0.0f, 0.001f);
         }
 
-        beginTest("reset restores default identity");
+        beginTest("reset restores default negative arch");
         {
             BezierCurve curve;
             curve.addPoint(0.5f, 0.8f);
             curve.moveStartOutHandle(0.1f, 0.9f);
             curve.reset();
             expectEquals(curve.getNumPoints(), 0);
-            expectWithinAbsoluteError(curve.evaluate(0.5f), 0.5f, 0.001f);
+            expectWithinAbsoluteError(curve.evaluate(0.5f), -0.75f, 0.02f);
+            expectWithinAbsoluteError(curve.evaluate(1.0f), 0.0f, 0.001f);
             auto h = curve.getStartOutHandle();
             expectWithinAbsoluteError(h.dx, 1.0f / 3.0f, 0.001f);
+            expectWithinAbsoluteError(h.dy, -1.0f, 0.001f);
         }
 
         beginTest("setPoints and getPoints round-trip");
@@ -241,16 +240,17 @@ public:
             expect(h.dx <= 0.0f, "end in handle dx should be <= 0");
         }
 
-        beginTest("buildFromSlots default produces identity");
+        beginTest("buildFromSlots default produces negative arch");
         {
             BezierCurve::SlotValues vals;
             BezierCurve curve;
             BezierCurve::buildFromSlots(curve, vals);
             expectEquals(curve.getNumPoints(), 0);
-            expectWithinAbsoluteError(curve.evaluate(0.5f), 0.5f, 0.001f);
+            expectWithinAbsoluteError(curve.evaluate(0.5f), -0.75f, 0.02f);
+            expectWithinAbsoluteError(curve.evaluate(1.0f), 0.0f, 0.001f);
             auto sh = curve.getStartOutHandle();
             expectWithinAbsoluteError(sh.dx, 1.0f / 3.0f, 0.001f);
-            expectWithinAbsoluteError(sh.dy, 1.0f / 3.0f, 0.001f);
+            expectWithinAbsoluteError(sh.dy, -1.0f, 0.001f);
         }
 
         beginTest("buildFromSlots one active slot");

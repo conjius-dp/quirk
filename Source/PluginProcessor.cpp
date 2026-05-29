@@ -72,11 +72,11 @@ static void addCurveParams(std::vector<std::unique_ptr<juce::RangedAudioParamete
     params.push_back(std::make_unique<juce::AudioParameterFloat>(fid("sh_dx"), prefix + "StartOut DX",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 1.0f / 3.0f, fa));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(fid("sh_dy"), prefix + "StartOut DY",
-        juce::NormalisableRange<float>(-1.0f, 1.0f, 0.001f), 1.0f / 3.0f, fa));
+        juce::NormalisableRange<float>(-1.0f, 1.0f, 0.001f), -1.0f, fa));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(fid("eh_dx"), prefix + "EndIn DX",
         juce::NormalisableRange<float>(-1.0f, 0.0f, 0.001f), -1.0f / 3.0f, fa));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(fid("eh_dy"), prefix + "EndIn DY",
-        juce::NormalisableRange<float>(-1.0f, 1.0f, 0.001f), -1.0f / 3.0f, fa));
+        juce::NormalisableRange<float>(-1.0f, 1.0f, 0.001f), -1.0f, fa));
 
     for (int i = 0; i < BezierCurve::SlotValues::kMaxSlots; ++i)
     {
@@ -89,11 +89,11 @@ static void addCurveParams(std::vector<std::unique_ptr<juce::RangedAudioParamete
         params.push_back(std::make_unique<juce::AudioParameterFloat>(fid("p" + s + "_idx"), prefix + "P" + s + " InDX",
             juce::NormalisableRange<float>(-1.0f, 0.0f, 0.001f), 0.0f, fa));
         params.push_back(std::make_unique<juce::AudioParameterFloat>(fid("p" + s + "_idy"), prefix + "P" + s + " InDY",
-            juce::NormalisableRange<float>(-1.0f, 1.0f, 0.001f), 0.0f, fa));
+            juce::NormalisableRange<float>(-2.0f, 2.0f, 0.001f), 0.0f, fa));
         params.push_back(std::make_unique<juce::AudioParameterFloat>(fid("p" + s + "_odx"), prefix + "P" + s + " OutDX",
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 0.0f, fa));
         params.push_back(std::make_unique<juce::AudioParameterFloat>(fid("p" + s + "_ody"), prefix + "P" + s + " OutDY",
-            juce::NormalisableRange<float>(-1.0f, 1.0f, 0.001f), 0.0f, fa));
+            juce::NormalisableRange<float>(-2.0f, 2.0f, 0.001f), 0.0f, fa));
     }
 }
 
@@ -102,18 +102,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuirkAudioProcessor::createP
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("gain", 1), "Gain",
-        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f, 0.3f), 0.0f));
-
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("volume", 1), "Volume",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
 
     params.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID("bypass", 1), "Bypass", false));
-
-    params.push_back(std::make_unique<juce::AudioParameterBool>(
-        juce::ParameterID("asymmetric", 1), "Asymmetric", false));
 
     addCurveParams(params, "rc_", true);
     addCurveParams(params, "lc_", false);
@@ -171,7 +164,7 @@ void QuirkAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         else if (msg.isNoteOff())
             oscillator_.noteOff(msg.getNoteNumber());
         else if (msg.isAllNotesOff() || msg.isAllSoundOff())
-            oscillator_.noteOff(oscillator_.isActive() ? -1 : 0);
+            oscillator_.noteOff(-1);
     }
     midiMessages.clear();
 
@@ -179,15 +172,11 @@ void QuirkAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         rebuildLUTFromParams();
 
     int readIdx = activeLutIndex_.load(std::memory_order_acquire);
-    bool symmetric = apvts.getRawParameterValue("asymmetric")->load() < 0.5f;
-    const float* leftLut = symmetric ? lutBuffers_[readIdx] : leftLutBuffers_[readIdx];
-
-    float gain = apvts.getRawParameterValue("gain")->load();
     float volume = apvts.getRawParameterValue("volume")->load();
 
     oscillator_.renderBlock(buffer.getWritePointer(0), numSamples,
-                            lutBuffers_[readIdx], leftLut, BezierCurve::kLutSize,
-                            gain, volume);
+                            lutBuffers_[readIdx], leftLutBuffers_[readIdx],
+                            BezierCurve::kLutSize, volume);
 
     for (int ch = 1; ch < numCh; ++ch)
         buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);
@@ -300,14 +289,14 @@ static BezierCurve::SlotValues legacyTreeToSlots(const juce::ValueTree& child)
     if (startH.isValid())
     {
         v.startOutDx = static_cast<float>(startH.getProperty("outDx", 1.0f / 3.0f));
-        v.startOutDy = static_cast<float>(startH.getProperty("outDy", 1.0f / 3.0f));
+        v.startOutDy = static_cast<float>(startH.getProperty("outDy", -1.0f));
     }
 
     auto endH = child.getChildWithName("EndHandle");
     if (endH.isValid())
     {
         v.endInDx = static_cast<float>(endH.getProperty("inDx", -1.0f / 3.0f));
-        v.endInDy = static_cast<float>(endH.getProperty("inDy", -1.0f / 3.0f));
+        v.endInDy = static_cast<float>(endH.getProperty("inDy", -1.0f));
     }
 
     int slotIdx = 0;

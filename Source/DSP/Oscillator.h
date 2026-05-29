@@ -10,7 +10,7 @@ public:
     void noteOff(int midiNote);
     void renderBlock(float* output, int numSamples,
                      const float* lut, const float* leftLut, int lutSize,
-                     float gain, float volume);
+                     float volume);
     bool isActive() const { return noteActive_; }
 
 private:
@@ -22,6 +22,5 @@ private:
     int currentNote_ = -1;
 
     static double midiNoteToFreq(int note);
-    static float polyBlep(double t, double dt);
     static float lookupLUT(float x, const float* lut, const float* leftLut, int lutSize);
 };

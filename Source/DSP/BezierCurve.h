@@ -50,9 +50,9 @@ public:
         static constexpr int kMaxSlots = 5;
 
         float startOutDx = 1.0f / 3.0f;
-        float startOutDy = 1.0f / 3.0f;
+        float startOutDy = -1.0f;
         float endInDx = -1.0f / 3.0f;
-        float endInDy = -1.0f / 3.0f;
+        float endInDy = -1.0f;
 
         struct Slot
         {
@@ -81,8 +81,8 @@ public:
 
 private:
     std::vector<BezierPoint> points_;
-    BezierHandle startOut_{1.0f / 3.0f, 1.0f / 3.0f};
-    BezierHandle endIn_{-1.0f / 3.0f, -1.0f / 3.0f};
+    BezierHandle startOut_{1.0f / 3.0f, -1.0f};
+    BezierHandle endIn_{-1.0f / 3.0f, -1.0f};
 
     struct Segment
     {

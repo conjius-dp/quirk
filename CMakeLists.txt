@@ -46,6 +46,7 @@ target_sources(Quirk
 juce_add_binary_data(QuirkBinaryData
     SOURCES
         Assets/conjius-avatar-transparent-bg.png
+        Assets/quirk-logo-transparent-bg.png
         Assets/Inconsolata-Bold.ttf
         Assets/Inconsolata-Regular.ttf)
 

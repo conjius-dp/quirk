@@ -9,38 +9,18 @@ QuirkAudioProcessorEditor::QuirkAudioProcessorEditor(QuirkAudioProcessor& p)
                         BinaryData::InconsolataRegular_ttfSize);
     setLookAndFeel(&conjusLAF);
 
-    gainSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    gainSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 120, 30);
-    ConjusKnobLookAndFeel::setKnobType(gainSlider, KnobType::Drive);
-    gainSlider.setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
-    addAndMakeVisible(gainSlider);
-
     volumeSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     volumeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 120, 30);
     ConjusKnobLookAndFeel::setKnobType(volumeSlider, KnobType::Volume);
     volumeSlider.setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
     addAndMakeVisible(volumeSlider);
 
-    gainLabel.setJustificationType(juce::Justification::centredBottom);
-    addAndMakeVisible(gainLabel);
     volumeLabel.setJustificationType(juce::Justification::centredBottom);
     addAndMakeVisible(volumeLabel);
-
-    gainLabel.toBack();
     volumeLabel.toBack();
 
-    gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-        processorRef.getAPVTS(), "gain", gainSlider);
     volumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processorRef.getAPVTS(), "volume", volumeSlider);
-
-    gainSlider.textFromValueFunction = [](double value) -> juce::String {
-        return juce::String(value, 1);
-    };
-    gainSlider.valueFromTextFunction = [](const juce::String& text) -> double {
-        return text.getDoubleValue();
-    };
-    gainSlider.updateText();
 
     volumeSlider.textFromValueFunction = [](double value) -> juce::String {
         return juce::String(value * 100.0, 1) + " %";
@@ -50,9 +30,6 @@ QuirkAudioProcessorEditor::QuirkAudioProcessorEditor(QuirkAudioProcessor& p)
     };
     volumeSlider.updateText();
 
-    gainSlider.onDoubleClick = [this]() {
-        startSnapAnimation(gainSlider, gainAnim);
-    };
     volumeSlider.onDoubleClick = [this]() {
         startSnapAnimation(volumeSlider, volumeAnim);
     };
@@ -61,22 +38,9 @@ QuirkAudioProcessorEditor::QuirkAudioProcessorEditor(QuirkAudioProcessor& p)
     bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         processorRef.getAPVTS(), "bypass", bypassButton);
 
-    symButton.setClickingTogglesState(true);
-    symButton.setMouseCursor(juce::MouseCursor::PointingHandCursor);
-    symButton.setConnectedEdges(0);
-    bool asym = !processorRef.isSymmetric();
-    symButton.getProperties().set("stateTarget", asym ? 1.0 : 0.0);
-    symButton.getProperties().set("stateProgress", asym ? 1.0 : 0.0);
-    symButton.onStateChange = [this]() {
-        symButton.getProperties().set("stateTarget", symButton.getToggleState() ? 1.0 : 0.0);
-    };
-    addAndMakeVisible(symButton);
-    symAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
-        processorRef.getAPVTS(), "asymmetric", symButton);
-
     logoImage = juce::ImageCache::getFromMemory(
-        BinaryData::conjiusavatartransparentbg_png,
-        BinaryData::conjiusavatartransparentbg_pngSize);
+        BinaryData::quirklogotransparentbg_png,
+        BinaryData::quirklogotransparentbg_pngSize);
 
     int savedW = processorRef.editorWidth.load();
     int savedH = processorRef.editorHeight.load();
@@ -140,41 +104,15 @@ void QuirkAudioProcessorEditor::timerCallback()
             c.repaint();
         }
     };
-    animateHover(gainSlider, gainSlider.isMouseOverOrDragging(true));
     animateHover(volumeSlider, volumeSlider.isMouseOverOrDragging(true));
-    animateHover(symButton, symButton.isOver() || symButton.isDown());
 
-    {
-        auto& props = symButton.getProperties();
-        float stateDest = static_cast<float>(props.getWithDefault("stateTarget", 0.0));
-        float current = static_cast<float>(props.getWithDefault("stateProgress", 0.0));
-        if (std::abs(stateDest - current) > 0.002f)
-        {
-            current += (stateDest - current) * 0.20f;
-            props.set("stateProgress", current);
-            symButton.repaint();
-        }
-    }
-
-    updateSnapAnimation(gainSlider, gainAnim);
     updateSnapAnimation(volumeSlider, volumeAnim);
 
-    float currentGain   = processorRef.getAPVTS().getRawParameterValue("gain")->load();
-    float currentVolume = processorRef.getAPVTS().getRawParameterValue("volume")->load();
     int curVer = processorRef.curveVersion_.load(std::memory_order_relaxed);
-    bool curSym = processorRef.isSymmetric();
-    if (curVer != lastCurveVersion || curSym != lastSymmetric)
-        processorRef.updateDisplayCurves();
-
-    if (std::abs(currentGain - lastGraphGain) > 0.001f
-        || std::abs(currentVolume - lastGraphVolume) > 0.001f
-        || curVer != lastCurveVersion
-        || curSym != lastSymmetric)
+    if (curVer != lastCurveVersion)
     {
-        lastGraphGain   = currentGain;
-        lastGraphVolume = currentVolume;
+        processorRef.updateDisplayCurves();
         lastCurveVersion = curVer;
-        lastSymmetric = curSym;
         repaint(graphBounds);
     }
 }
@@ -186,27 +124,29 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
     if (logoImage.isValid() && showChrome)
     {
         float scale = static_cast<float>(getWidth()) / static_cast<float>(KnobDesign::defaultWidth);
-        int baseSize = static_cast<int>(37.5f * scale);
+        float aspect = static_cast<float>(logoImage.getWidth()) / static_cast<float>(logoImage.getHeight());
+        int baseH = static_cast<int>(30.0f * scale);
+        int baseW = static_cast<int>(baseH * aspect);
         int padLeft = static_cast<int>(6.0f * scale);
         int baseX = padLeft;
-        int baseY = getHeight() - baseSize;
-        logoBounds = { baseX, baseY, baseSize, baseSize };
+        int baseY = getHeight() - baseH;
+        logoBounds = { baseX, baseY, baseW, baseH };
 
         float hoverScale = 1.0f + 0.2f * logoHoverProgress;
-        int drawSize = static_cast<int>(baseSize * hoverScale);
-        int drawX = baseX + (baseSize - drawSize) / 2;
-        int drawY = baseY + (baseSize - drawSize) / 2;
+        int drawW = static_cast<int>(baseW * hoverScale);
+        int drawH = static_cast<int>(baseH * hoverScale);
+        int drawX = baseX + (baseW - drawW) / 2;
+        int drawY = baseY + (baseH - drawH) / 2;
 
         float brightness = 0.35f + 0.65f * logoHoverProgress;
         g.setOpacity(brightness);
         g.drawImage(logoImage,
-                    drawX, drawY, drawSize, drawSize,
+                    drawX, drawY, drawW, drawH,
                     0, 0, logoImage.getWidth(), logoImage.getHeight());
         g.setOpacity(1.0f);
     }
 
     float w = static_cast<float>(getWidth());
-    float h = static_cast<float>(getHeight());
     float scaleF = w / static_cast<float>(KnobDesign::defaultWidth);
 
     {
@@ -232,16 +172,16 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
             g.setFont(conjusLAF.getBoldFont(titleFontSize));
             g.setColour(KnobDesign::accentColour);
             g.drawText("QUIRK",
-                       60.0f * scaleF, 90.0f * scaleF,
-                       180.0f * scaleF, 30.0f * scaleF,
+                       static_cast<int>(60.0f * scaleF), static_cast<int>(90.0f * scaleF),
+                       static_cast<int>(180.0f * scaleF), static_cast<int>(30.0f * scaleF),
                        juce::Justification::centred);
 
             float subtitleFontSize = 14.0f * scaleF;
             g.setFont(conjusLAF.getBoldFont(subtitleFontSize));
             g.setColour(KnobDesign::accentColour);
             g.drawText("SYNTH",
-                       60.0f * scaleF, 120.0f * scaleF,
-                       180.0f * scaleF, 16.0f * scaleF,
+                       static_cast<int>(60.0f * scaleF), static_cast<int>(120.0f * scaleF),
+                       static_cast<int>(180.0f * scaleF), static_cast<int>(16.0f * scaleF),
                        juce::Justification::centred);
         }
 
@@ -269,19 +209,14 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
         gc_.gCx = gCx; gc_.gCy = gCy; gc_.gRight = gRight; gc_.gBottom = gBottom;
         gc_.scaleF = scaleF; gc_.valid = true;
 
-        float gainParam = processorRef.getAPVTS().getRawParameterValue("gain")->load();
-        float volume = processorRef.getAPVTS().getRawParameterValue("volume")->load();
-        float gain = (gainParam < 1e-6f) ? 1.0f : std::pow(100.0f, gainParam / 100.0f);
         auto& curve = processorRef.getBezierCurve();
         auto& leftCurve = processorRef.getLeftBezierCurve();
-        bool symmetric = processorRef.isSymmetric();
 
         auto yForX = [&](float xVal) -> float {
-            float xEff = std::clamp(xVal * gain, -1.0f, 1.0f);
-            float sign = (xEff < 0.0f) ? -1.0f : 1.0f;
-            auto& c = (!symmetric && xEff < 0.0f) ? leftCurve : curve;
-            float result = c.evaluate(std::abs(xEff));
-            return sign * result * volume;
+            float sign = (xVal < 0.0f) ? -1.0f : 1.0f;
+            auto& c = (xVal < 0.0f) ? leftCurve : curve;
+            float result = c.evaluate(std::abs(xVal));
+            return sign * result;
         };
 
         auto buildSegment = [&](float t0, float t1, int steps) -> juce::Path {
@@ -321,39 +256,31 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
         float pointR = 5.0f * scaleF;
         float handleR = 3.0f * scaleF;
         float handleStroke = 1.5f * scaleF;
-        float invGain = 1.0f / gain;
-        auto dimAccent = KnobDesign::accentHoverColour.withAlpha(0.4f);
 
-        auto drawControlPoint = [&](float bx, float by, bool negate, bool dim, bool selected)
+        auto drawControlPoint = [&](float bx, float by, bool negate, bool selected)
         {
-            float dx = bx * invGain;
-            float dy = by * volume;
-            auto px = negate ? bezierToPixel(-dx, -dy) : bezierToPixel(dx, dy);
+            auto px = negate ? bezierToPixel(-bx, -by) : bezierToPixel(bx, by);
             auto col = selected ? KnobDesign::accentHoverColour.brighter(0.3f) : KnobDesign::accentHoverColour;
-            if (dim) col = dimAccent;
             g.setColour(col);
             g.fillEllipse(px.x - pointR, px.y - pointR, pointR * 2.0f, pointR * 2.0f);
         };
 
-        auto drawHandle = [&](float ptBx, float ptBy, float hDx, float hDy, bool negate, bool dim)
+        auto drawHandle = [&](float ptBx, float ptBy, float hDx, float hDy, bool negate)
         {
             float hx = ptBx + hDx;
             float hy = ptBy + hDy;
-            float ptDispX = ptBx * invGain, ptDispY = ptBy * volume;
-            float hDispX = hx * invGain, hDispY = hy * volume;
             juce::Point<float> ptPx, hPx;
             if (negate)
             {
-                ptPx = bezierToPixel(-ptDispX, -ptDispY);
-                hPx = bezierToPixel(-hDispX, -hDispY);
+                ptPx = bezierToPixel(-ptBx, -ptBy);
+                hPx = bezierToPixel(-hx, -hy);
             }
             else
             {
-                ptPx = bezierToPixel(ptDispX, ptDispY);
-                hPx = bezierToPixel(hDispX, hDispY);
+                ptPx = bezierToPixel(ptBx, ptBy);
+                hPx = bezierToPixel(hx, hy);
             }
-            auto col = dim ? dimAccent : KnobDesign::accentHoverColour.withAlpha(0.6f);
-            g.setColour(col);
+            g.setColour(KnobDesign::accentHoverColour.withAlpha(0.6f));
             juce::Path linePath;
             linePath.startNewSubPath(ptPx);
             linePath.lineTo(hPx);
@@ -365,51 +292,33 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
         };
 
         auto startH = curve.getStartOutHandle();
-        drawHandle(0.0f, 0.0f, startH.dx, startH.dy, false, false);
-
+        drawHandle(0.0f, 0.0f, startH.dx, startH.dy, false);
         auto endH = curve.getEndInHandle();
-        drawHandle(1.0f, 1.0f, endH.dx, endH.dy, false, false);
-
+        drawHandle(1.0f, 0.0f, endH.dx, endH.dy, false);
         for (int i = 0; i < curve.getNumPoints(); ++i)
         {
             auto& pt = curve.getPoint(i);
             bool sel = (dragTarget_.type == BezierHitType::Point
                         && dragTarget_.pointIndex == i && !dragTarget_.leftCurve);
-            drawHandle(pt.x, pt.y, pt.in.dx, pt.in.dy, false, false);
-            drawHandle(pt.x, pt.y, pt.out.dx, pt.out.dy, false, false);
-            drawControlPoint(pt.x, pt.y, false, false, sel);
+            drawHandle(pt.x, pt.y, pt.in.dx, pt.in.dy, false);
+            drawHandle(pt.x, pt.y, pt.out.dx, pt.out.dy, false);
+            drawControlPoint(pt.x, pt.y, false, sel);
         }
 
-        if (symmetric)
+        auto lStartH = leftCurve.getStartOutHandle();
+        drawHandle(0.0f, 0.0f, lStartH.dx, lStartH.dy, true);
+        auto lEndH = leftCurve.getEndInHandle();
+        drawHandle(1.0f, 0.0f, lEndH.dx, lEndH.dy, true);
+        for (int i = 0; i < leftCurve.getNumPoints(); ++i)
         {
-            drawHandle(0.0f, 0.0f, startH.dx, startH.dy, true, true);
-            drawHandle(1.0f, 1.0f, endH.dx, endH.dy, true, true);
-            for (int i = 0; i < curve.getNumPoints(); ++i)
-            {
-                auto& pt = curve.getPoint(i);
-                drawHandle(pt.x, pt.y, pt.in.dx, pt.in.dy, true, true);
-                drawHandle(pt.x, pt.y, pt.out.dx, pt.out.dy, true, true);
-                drawControlPoint(pt.x, pt.y, true, true, false);
-            }
-        }
-        else
-        {
-            auto lStartH = leftCurve.getStartOutHandle();
-            drawHandle(0.0f, 0.0f, lStartH.dx, lStartH.dy, true, false);
-            auto lEndH = leftCurve.getEndInHandle();
-            drawHandle(1.0f, 1.0f, lEndH.dx, lEndH.dy, true, false);
-            for (int i = 0; i < leftCurve.getNumPoints(); ++i)
-            {
-                auto& pt = leftCurve.getPoint(i);
-                bool sel = (dragTarget_.type == BezierHitType::Point
-                            && dragTarget_.pointIndex == i && dragTarget_.leftCurve);
-                drawHandle(pt.x, pt.y, pt.in.dx, pt.in.dy, true, false);
-                drawHandle(pt.x, pt.y, pt.out.dx, pt.out.dy, true, false);
-                drawControlPoint(pt.x, pt.y, true, false, sel);
-            }
+            auto& pt = leftCurve.getPoint(i);
+            bool sel = (dragTarget_.type == BezierHitType::Point
+                        && dragTarget_.pointIndex == i && dragTarget_.leftCurve);
+            drawHandle(pt.x, pt.y, pt.in.dx, pt.in.dy, true);
+            drawHandle(pt.x, pt.y, pt.out.dx, pt.out.dy, true);
+            drawControlPoint(pt.x, pt.y, true, sel);
         }
     }
-
 }
 
 void QuirkAudioProcessorEditor::paintOverChildren(juce::Graphics& g)
@@ -457,18 +366,14 @@ void QuirkAudioProcessorEditor::resized()
         bypassButton.toFront(false);
     }
 
+    float sF = w / static_cast<float>(KnobDesign::defaultWidth);
+
     float knobColW = w * 0.28f;
     float halfCol = knobColW * 0.5f;
-    float knobColX0 = w * (200.0f / 650.0f) - halfCol;
-    float knobColX1 = w * (450.0f / 650.0f) - halfCol;
+    float knobColX = w * (132.0f / 650.0f) - halfCol;
 
-    float sF = w / static_cast<float>(KnobDesign::defaultWidth);
-    gainLabel.setFont(conjusLAF.getBoldFont(20.0f * sF));
     volumeLabel.setFont(conjusLAF.getBoldFont(21.5f * sF));
-
-    gainLabel.setBounds(static_cast<int>(175.0f * sF), static_cast<int>(259.35f * sF),
-                        static_cast<int>(50.0f * sF), static_cast<int>(17.0f * sF));
-    volumeLabel.setBounds(static_cast<int>(413.0f * sF), static_cast<int>(259.35f * sF),
+    volumeLabel.setBounds(static_cast<int>(96.0f * sF), static_cast<int>(259.35f * sF),
                           static_cast<int>(72.0f * sF), static_cast<int>(17.0f * sF));
 
     float dbFontSize = w * KnobDesign::dbTextScale;
@@ -480,37 +385,28 @@ void QuirkAudioProcessorEditor::resized()
     const int sliderTopEditor = sliderTop + static_cast<int>(knobClusterExtraShift);
 
     float sliderBoundsW = knobColW * 0.90f;
-    float sliderOffset0 = knobColX0 + (knobColW - sliderBoundsW) * 0.5f;
-    float sliderOffset1 = knobColX1 + (knobColW - sliderBoundsW) * 0.5f;
+    float sliderOffset = knobColX + (knobColW - sliderBoundsW) * 0.5f;
 
     int textBoxW = static_cast<int>(sliderBoundsW * 0.95f);
     int textBoxH = static_cast<int>(dbFontSize * 2.6f);
 
-    gainSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, textBoxW, textBoxH);
-    gainSlider.setMouseDragSensitivity(static_cast<int>(w * 0.5f));
-    gainSlider.setBounds(static_cast<int>(sliderOffset0), sliderTopEditor,
-                         static_cast<int>(sliderBoundsW), sliderH);
-
     volumeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, textBoxW, textBoxH);
     volumeSlider.setMouseDragSensitivity(static_cast<int>(w * 0.5f));
-    volumeSlider.setBounds(static_cast<int>(sliderOffset1), sliderTopEditor,
+    volumeSlider.setBounds(static_cast<int>(sliderOffset), sliderTopEditor,
                            static_cast<int>(sliderBoundsW), sliderH);
 
-    for (auto* slider : { &gainSlider, &volumeSlider })
+    volumeSlider.setPaintingIsUnclipped(true);
+    if (auto* textBox = volumeSlider.getChildComponent(0))
     {
-        slider->setPaintingIsUnclipped(true);
-        if (auto* textBox = slider->getChildComponent(0))
+        if (auto* label = dynamic_cast<juce::Label*>(textBox))
         {
-            if (auto* label = dynamic_cast<juce::Label*>(textBox))
-            {
-                label->setFont(conjusLAF.getRegularFont(dbFontSize));
-                label->setMinimumHorizontalScale(1.0f);
-                label->setColour(juce::Label::textColourId, KnobDesign::accentColour);
-                label->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-                label->setColour(juce::Label::outlineColourId, juce::Colours::transparentBlack);
-                label->setInterceptsMouseClicks(false, false);
-                label->setPaintingIsUnclipped(true);
-            }
+            label->setFont(conjusLAF.getRegularFont(dbFontSize));
+            label->setMinimumHorizontalScale(1.0f);
+            label->setColour(juce::Label::textColourId, KnobDesign::accentColour);
+            label->setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+            label->setColour(juce::Label::outlineColourId, juce::Colours::transparentBlack);
+            label->setInterceptsMouseClicks(false, false);
+            label->setPaintingIsUnclipped(true);
         }
     }
 
@@ -518,92 +414,11 @@ void QuirkAudioProcessorEditor::resized()
     float knobDiameter = juce::jmin(sliderBoundsW, knobAreaH) * 0.78f;
     float knobStrokeW = knobDiameter * KnobDesign::knobStrokeFrac;
     bypassButton.setRingStrokeWidth(knobStrokeW);
-
-    {
-        float btnFontSize = 15.0f * sF;
-        float knobDiam = w * 0.216f;
-        float knobStrokeW = knobDiam * KnobDesign::knobStrokeFrac;
-        float symBtnW = 95.0f * sF;
-        float symBtnH = 26.0f * sF;
-        float symBtnX = 82.86f * sF;
-        float symBtnY = 195.0f * sF;
-        symButton.setBounds(static_cast<int>(symBtnX), static_cast<int>(symBtnY),
-                            static_cast<int>(symBtnW), static_cast<int>(symBtnH));
-        symButton.setConnectedEdges(0);
-
-        struct PillButtonLAF : juce::LookAndFeel_V4
-        {
-            juce::Font font;
-            float knobStrokeW;
-            PillButtonLAF(juce::Font f, float ksw) : font(f), knobStrokeW(ksw) {}
-
-            static juce::Rectangle<float> pressBounds(juce::Button& button, bool isButtonDown)
-            {
-                auto b = button.getLocalBounds().toFloat();
-                if (isButtonDown)
-                    b = b.reduced(b.getWidth() * 0.04f, b.getHeight() * 0.10f);
-                return b;
-            }
-
-            void drawButtonBackground(juce::Graphics& g, juce::Button& button,
-                                      const juce::Colour&, bool, bool isButtonDown) override
-            {
-                auto bounds = pressBounds(button, isButtonDown);
-                float cornerR = bounds.getHeight() * 0.5f;
-                float hoverProgress = static_cast<float>(
-                    button.getProperties().getWithDefault("hoverProgress", 0.0));
-                float stateProgress = static_cast<float>(
-                    button.getProperties().getWithDefault("stateProgress", 0.0));
-                auto interactiveAccent = KnobDesign::accentColour
-                    .interpolatedWith(KnobDesign::accentHoverColour, hoverProgress);
-                auto fill = interactiveAccent.interpolatedWith(KnobDesign::bgColour, stateProgress);
-                g.setColour(fill);
-                g.fillRoundedRectangle(bounds, cornerR);
-                float borderW = knobStrokeW * 0.70f * stateProgress;
-                if (borderW > 0.001f)
-                {
-                    g.setColour(interactiveAccent);
-                    g.drawRoundedRectangle(bounds.reduced(borderW * 0.5f), cornerR, borderW);
-                }
-            }
-
-            void drawButtonText(juce::Graphics& g, juce::TextButton& button,
-                                bool, bool isButtonDown) override
-            {
-                auto bounds = pressBounds(button, isButtonDown);
-                float hoverProgress = static_cast<float>(
-                    button.getProperties().getWithDefault("hoverProgress", 0.0));
-                float stateProgress = static_cast<float>(
-                    button.getProperties().getWithDefault("stateProgress", 0.0));
-                auto interactiveAccent = KnobDesign::accentColour
-                    .interpolatedWith(KnobDesign::accentHoverColour, hoverProgress);
-                auto textColour = KnobDesign::bgColour.interpolatedWith(interactiveAccent, stateProgress);
-                float alphaSym  = juce::jmax(0.0f, 1.0f - 2.0f * stateProgress);
-                float alphaAsym = juce::jmax(0.0f, 2.0f * stateProgress - 1.0f);
-                g.setFont(font);
-                if (alphaSym > 0.001f)
-                {
-                    g.setColour(textColour.withMultipliedAlpha(alphaSym));
-                    g.drawText("Symmetric", bounds, juce::Justification::centred, false);
-                }
-                if (alphaAsym > 0.001f)
-                {
-                    g.setColour(textColour.withMultipliedAlpha(alphaAsym));
-                    g.drawText("Asymmetric", bounds, juce::Justification::centred, false);
-                }
-            }
-        };
-        static PillButtonLAF* pillLAF = nullptr;
-        if (pillLAF) delete pillLAF;
-        pillLAF = new PillButtonLAF(conjusLAF.getBoldFont(btnFontSize), knobStrokeW);
-        symButton.setLookAndFeel(pillLAF);
-    }
 }
 
 void QuirkAudioProcessorEditor::startSnapAnimation(juce::Slider& slider, SliderAnimation& anim)
 {
-    const char* paramId = (&slider == &gainSlider) ? "gain" : "volume";
-    auto* param = processorRef.getAPVTS().getParameter(paramId);
+    auto* param = processorRef.getAPVTS().getParameter("volume");
     if (param == nullptr) return;
 
     anim.currentValue = slider.getValue();
@@ -656,11 +471,6 @@ QuirkAudioProcessorEditor::findBezierHit(float mx, float my) const
 {
     if (!gc_.valid) return {};
 
-    float gainParam = processorRef.getAPVTS().getRawParameterValue("gain")->load();
-    float volume = processorRef.getAPVTS().getRawParameterValue("volume")->load();
-    float gain = (gainParam < 1e-6f) ? 1.0f : std::pow(100.0f, gainParam / 100.0f);
-    float invGain = 1.0f / gain;
-    bool symmetric = processorRef.isSymmetric();
     float hitR = 8.0f * gc_.scaleF;
     float handleHitR = 6.0f * gc_.scaleF;
     float bestDist = hitR;
@@ -682,26 +492,26 @@ QuirkAudioProcessorEditor::findBezierHit(float mx, float my) const
     {
         float sign = negate ? -1.0f : 1.0f;
         auto sh = c.getStartOutHandle();
-        float hx = sh.dx * invGain * sign, hy = sh.dy * volume * sign;
+        float hx = sh.dx * sign, hy = sh.dy * sign;
         checkAt(hx, hy, BezierHitType::StartOutHandle, -1, isLeft, handleHitR);
 
         auto eh = c.getEndInHandle();
-        float ehx = (1.0f + eh.dx) * invGain * sign;
-        float ehy = (1.0f + eh.dy) * volume * sign;
+        float ehx = (1.0f + eh.dx) * sign;
+        float ehy = eh.dy * sign;
         checkAt(ehx, ehy, BezierHitType::EndInHandle, -1, isLeft, handleHitR);
 
         for (int i = 0; i < c.getNumPoints(); ++i)
         {
             auto& pt = c.getPoint(i);
-            float pdx = pt.x * invGain * sign, pdy = pt.y * volume * sign;
+            float pdx = pt.x * sign, pdy = pt.y * sign;
             checkAt(pdx, pdy, BezierHitType::Point, i, isLeft, hitR);
 
-            float ihx = (pt.x + pt.in.dx) * invGain * sign;
-            float ihy = (pt.y + pt.in.dy) * volume * sign;
+            float ihx = (pt.x + pt.in.dx) * sign;
+            float ihy = (pt.y + pt.in.dy) * sign;
             checkAt(ihx, ihy, BezierHitType::InHandle, i, isLeft, handleHitR);
 
-            float ohx = (pt.x + pt.out.dx) * invGain * sign;
-            float ohy = (pt.y + pt.out.dy) * volume * sign;
+            float ohx = (pt.x + pt.out.dx) * sign;
+            float ohy = (pt.y + pt.out.dy) * sign;
             checkAt(ohx, ohy, BezierHitType::OutHandle, i, isLeft, handleHitR);
         }
     };
@@ -709,31 +519,18 @@ QuirkAudioProcessorEditor::findBezierHit(float mx, float my) const
     auto& curve = processorRef.getBezierCurve();
     checkCurve(curve, false, false);
 
-    if (symmetric)
-    {
-        checkCurve(curve, true, false);
-    }
-    else
-    {
-        auto& leftCurve = processorRef.getLeftBezierCurve();
-        checkCurve(leftCurve, true, true);
-    }
+    auto& leftCurve = processorRef.getLeftBezierCurve();
+    checkCurve(leftCurve, true, true);
 
     return best;
 }
 
 float QuirkAudioProcessorEditor::distToNearestCurvePoint(float bx, float by) const
 {
-    float gainParam = processorRef.getAPVTS().getRawParameterValue("gain")->load();
-    float volume = processorRef.getAPVTS().getRawParameterValue("volume")->load();
-    float gain = (gainParam < 1e-6f) ? 1.0f : std::pow(100.0f, gainParam / 100.0f);
-    bool symmetric = processorRef.isSymmetric();
-
-    float xEff = std::clamp(bx * gain, -1.0f, 1.0f);
-    float sign = (xEff < 0.0f) ? -1.0f : 1.0f;
-    auto& c = (!symmetric && xEff < 0.0f) ? processorRef.getLeftBezierCurve()
-                                           : processorRef.getBezierCurve();
-    float curveY = sign * c.evaluate(std::abs(xEff)) * volume;
+    float sign = (bx < 0.0f) ? -1.0f : 1.0f;
+    auto& c = (bx < 0.0f) ? processorRef.getLeftBezierCurve()
+                           : processorRef.getBezierCurve();
+    float curveY = sign * c.evaluate(std::abs(bx));
 
     auto curvePx = bezierToPixel(bx, curveY);
     auto pointPx = bezierToPixel(bx, by);
@@ -825,12 +622,8 @@ void QuirkAudioProcessorEditor::mouseDrag(const juce::MouseEvent& e)
     float mx = static_cast<float>(e.getPosition().x);
     float my = static_cast<float>(e.getPosition().y);
     auto bz = pixelToBezier(mx, my);
-    float gainParam = processorRef.getAPVTS().getRawParameterValue("gain")->load();
-    float volume = processorRef.getAPVTS().getRawParameterValue("volume")->load();
-    float gain = (gainParam < 1e-6f) ? 1.0f : std::pow(100.0f, gainParam / 100.0f);
-    float rawY = (std::abs(volume) > 1e-6f) ? bz.y / volume : bz.y;
-    float absBx = std::abs(bz.x) * gain;
-    float absby = (bz.x < 0.0f) ? -rawY : rawY;
+    float absBx = std::abs(bz.x);
+    float absby = (bz.x < 0.0f) ? -bz.y : bz.y;
 
     auto s = juce::String(dragSlot_);
 
@@ -864,7 +657,7 @@ void QuirkAudioProcessorEditor::mouseDrag(const juce::MouseEvent& e)
             break;
         case BezierHitType::EndInHandle:
             setParam(dragPrefix_ + "eh_dx", absBx - 1.0f);
-            setParam(dragPrefix_ + "eh_dy", absby - 1.0f);
+            setParam(dragPrefix_ + "eh_dy", absby);
             break;
         default:
             break;
@@ -907,19 +700,14 @@ void QuirkAudioProcessorEditor::mouseDoubleClick(const juce::MouseEvent& e)
     }
 
     auto bz = pixelToBezier(mx, my);
-    float gainParam = processorRef.getAPVTS().getRawParameterValue("gain")->load();
-    float volume = processorRef.getAPVTS().getRawParameterValue("volume")->load();
-    float gain = (gainParam < 1e-6f) ? 1.0f : std::pow(100.0f, gainParam / 100.0f);
-    bool symmetric = processorRef.isSymmetric();
-    float rawY = (std::abs(volume) > 1e-6f) ? bz.y / volume : bz.y;
-    float absBx = std::clamp(std::abs(bz.x) * gain, 0.0f, 1.0f);
-    float absby = (bz.x < 0.0f) ? -rawY : rawY;
+    float absBx = std::clamp(std::abs(bz.x), 0.0f, 1.0f);
+    float absby = (bz.x < 0.0f) ? -bz.y : bz.y;
 
     float curveHitDist = distToNearestCurvePoint(bz.x, bz.y);
     if (curveHitDist > 12.0f * gc_.scaleF)
         return;
 
-    bool useLeft = !symmetric && bz.x < 0.0f;
+    bool useLeft = bz.x < 0.0f;
     auto prefix = curvePrefix(useLeft);
     int slot = processorRef.findFreeSlot(prefix);
     if (slot < 0) return;

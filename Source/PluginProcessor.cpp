@@ -110,16 +110,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuirkAudioProcessor::createP
 
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("attack", 1), "Attack",
-        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 50.0f));
+        juce::NormalisableRange<float>(0.0f, 2000.0f, 1.0f), 10.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("decay", 1), "Decay",
-        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 50.0f));
+        juce::NormalisableRange<float>(0.0f, 2000.0f, 1.0f), 200.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("sustain", 1), "Sustain",
-        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 50.0f));
+        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 70.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("release", 1), "Release",
-        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 50.0f));
+        juce::NormalisableRange<float>(0.0f, 2000.0f, 1.0f), 300.0f));
 
     addCurveParams(params, "rc_", true);
     addCurveParams(params, "lc_", false);
@@ -183,6 +183,12 @@ void QuirkAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     if (curveParamsDirty_.exchange(false, std::memory_order_acquire))
         rebuildLUTFromParams();
+
+    float attackMs  = apvts.getRawParameterValue("attack")->load();
+    float decayMs   = apvts.getRawParameterValue("decay")->load();
+    float sustainPct = apvts.getRawParameterValue("sustain")->load();
+    float releaseMs = apvts.getRawParameterValue("release")->load();
+    oscillator_.setADSR(attackMs, decayMs, sustainPct / 100.0f, releaseMs);
 
     int readIdx = activeLutIndex_.load(std::memory_order_acquire);
     float volume = apvts.getRawParameterValue("volume")->load();

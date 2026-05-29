@@ -401,10 +401,18 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
             g.setColour(pillColour);
             g.fillRoundedRectangle(valueRect, 11.0f * scaleF);
 
+            double val = faderSliders[i]->getValue();
+            juce::String pillText;
+            if (i == 2)
+                pillText = juce::String(val, 1) + " %";
+            else if (val >= 1000.0)
+                pillText = juce::String(val / 1000.0, 2) + " s";
+            else
+                pillText = juce::String(static_cast<int>(val)) + " ms";
+
             g.setColour(KnobDesign::bgColour);
             g.setFont(conjusLAF.getBoldFont(faderLabelFontSize));
-            g.drawText(juce::String(faderSliders[i]->getValue(), 1) + " %",
-                       valueRect, juce::Justification::centred);
+            g.drawText(pillText, valueRect, juce::Justification::centred);
         }
     }
 }

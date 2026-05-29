@@ -17,8 +17,18 @@ public:
             onDoubleClick();
     }
 
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
+    {
+        auto reversed = wheel;
+        reversed.deltaY = -wheel.deltaY;
+        juce::Slider::mouseWheelMove(e, reversed);
+    }
+
     bool hitTest(int x, int y) override
     {
+        if (!isRotary())
+            return juce::Component::hitTest(x, y);
+
         float sw = static_cast<float>(getWidth());
         float sh = static_cast<float>(getHeight());
 
@@ -78,9 +88,15 @@ private:
     AnimatedSlider volumeSlider;
     juce::Label volumeLabel { {}, "VOLUME" };
 
+    AnimatedSlider attackSlider, decaySlider, sustainSlider, releaseSlider;
+
     BypassButton bypassButton;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volumeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attackAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> decayAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sustainAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> releaseAttachment;
 
     juce::Image logoImage;
     juce::Image quirkLogoImage;

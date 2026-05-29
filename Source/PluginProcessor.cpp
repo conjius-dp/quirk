@@ -108,6 +108,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuirkAudioProcessor::createP
     params.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID("bypass", 1), "Bypass", false));
 
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("attack", 1), "Attack",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 50.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("decay", 1), "Decay",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 50.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("sustain", 1), "Sustain",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 50.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("release", 1), "Release",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 50.0f));
+
     addCurveParams(params, "rc_", true);
     addCurveParams(params, "lc_", false);
 

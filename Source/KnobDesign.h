@@ -240,7 +240,10 @@ public:
 
             auto* editor = slider ? slider->getParentComponent() : nullptr;
             float windowH = editor ? static_cast<float>(editor->getHeight()) : 570.0f;
-            float pillFontSize = windowH * 0.036f;
+            float windowW = editor ? static_cast<float>(editor->getWidth()) : 650.0f;
+            bool rotary = slider && slider->isRotary();
+
+            float pillFontSize = rotary ? windowH * 0.036f : windowW * 0.0215f;
             auto pillFont = getBoldFont(pillFontSize);
 
             juce::String valueStr = text.replace(" %", "").trim();
@@ -249,15 +252,14 @@ public:
             float suffixW = KnobDesign::stringWidth(pillFont, suffix);
             float totalW = valueW + suffixW;
 
-            float windowW = editor ? static_cast<float>(editor->getWidth()) : 650.0f;
-            float knobDiam = windowW * 0.1512f;
+            float minPillW = rotary ? windowW * 0.1512f : 0.0f;
             float pillH = pillFontSize * 1.5f;
             float padX = pillH * 0.45f;
-            float pillW = juce::jmax(totalW + 2.0f * padX, knobDiam);
+            float pillW = juce::jmax(totalW + 2.0f * padX, minPillW);
 
             float labelW = static_cast<float>(label.getWidth());
             float pillX = (labelW - pillW) * 0.5f;
-            float pillUpShift = pillFontSize * 1.25f;
+            float pillUpShift = rotary ? pillFontSize * 1.25f : 0.0f;
             float pillY = (static_cast<float>(label.getHeight()) - pillH) * 0.5f - pillUpShift;
 
             auto pillBounds = juce::Rectangle<float>(pillX, pillY, pillW, pillH);
@@ -286,6 +288,65 @@ public:
         {
             LookAndFeel_V4::drawLabel(g, label);
         }
+    }
+
+    void drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+                          float sliderPos, float /*minPos*/, float /*maxPos*/,
+                          juce::Slider::SliderStyle, juce::Slider& slider) override
+    {
+        float sF = static_cast<float>(width) / 28.0f;
+
+        float trackW = 6.0f * sF;
+        float trackH = static_cast<float>(height);
+        float trackX = (static_cast<float>(width) - trackW) * 0.5f + static_cast<float>(x);
+        float trackY = static_cast<float>(y);
+
+        g.setColour(juce::Colour(0xff2a1800));
+        g.fillRoundedRectangle(trackX, trackY, trackW, trackH, 1.0f * sF);
+
+        float fillTop = sliderPos;
+        float fillH = trackY + trackH - fillTop;
+        if (fillH > 0.0f)
+        {
+            g.setColour(KnobDesign::accentColour);
+            g.fillRoundedRectangle(trackX, fillTop, trackW, fillH, 1.0f * sF);
+        }
+
+        float tickX = trackX + trackW + 4.0f * sF;
+        float tickW = 8.0f * sF;
+        g.setColour(juce::Colour(0xff6a4200));
+        for (int i = 0; i < 5; ++i)
+        {
+            float frac = static_cast<float>(i) / 4.0f;
+            float ty = trackY + frac * trackH;
+            float th = (i == 0 || i == 2 || i == 4) ? 4.0f * sF : 2.0f * sF;
+            g.fillRect(tickX, ty - th * 0.5f, tickW, th);
+        }
+
+        float capW = 28.0f * sF;
+        float capH = 18.0f * sF;
+        float capR = 7.0f * sF;
+        float capX = static_cast<float>(x) + (static_cast<float>(width) - capW) * 0.5f;
+        float capY = sliderPos - capH * 0.5f;
+        juce::Rectangle<float> capRect(capX, capY, capW, capH);
+
+        float hoverProgress = static_cast<float>(
+            slider.getProperties().getWithDefault("hoverProgress", 0.0));
+        auto capColour = KnobDesign::accentColour
+            .interpolatedWith(KnobDesign::accentHoverColour, hoverProgress);
+
+        g.setColour(capColour);
+        g.fillRoundedRectangle(capRect, capR);
+        g.setColour(KnobDesign::bgColour);
+        g.drawRoundedRectangle(capRect, capR, 3.0f * sF);
+        g.fillRect(capX, capY + capH * 0.5f - 1.0f * sF, capW, 2.0f * sF);
+    }
+
+    juce::MouseCursor getMouseCursorFor(juce::Component& component) override
+    {
+        if (dynamic_cast<juce::Slider*>(&component))
+            return juce::MouseCursor::UpDownResizeCursor;
+        return LookAndFeel_V4::getMouseCursorFor(component);
     }
 
 private:

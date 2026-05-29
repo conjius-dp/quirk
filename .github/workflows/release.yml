@@ -1,0 +1,200 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - name: Extract version from tag
+        id: v
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Releasing $TAG"
+
+  build-macos:
+    needs: version
+    runs-on: macos-15
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+
+    steps:
+      - name: Checkout (tag)
+        uses: actions/checkout@v4
+
+      - name: Patch CMakeLists version to match tag
+        run: |
+          CURRENT=$(sed -n 's/.*project(Quirk VERSION \([0-9]*\.[0-9]*\.[0-9]*\)).*/\1/p' CMakeLists.txt)
+          if [ "$CURRENT" != "$VERSION" ]; then
+            sed -i '' "s/project(Quirk VERSION ${CURRENT})/project(Quirk VERSION ${VERSION})/" CMakeLists.txt
+          fi
+
+      - name: Install ccache
+        run: brew install ccache
+
+      - name: Cache JUCE
+        id: cache-juce
+        uses: actions/cache@v4
+        with:
+          path: JUCE
+          key: juce-8.0.12
+
+      - name: Clone JUCE
+        if: steps.cache-juce.outputs.cache-hit != 'true'
+        run: git clone --depth 1 --branch 8.0.12 https://github.com/juce-framework/JUCE.git JUCE
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ccache
+          key: ccache-release-${{ hashFiles('Source/**', 'CMakeLists.txt') }}
+          restore-keys: ccache-release-
+
+      - name: Configure (Release)
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
+
+      - name: Build VST3 + AU
+        run: cmake --build build --target Quirk_VST3 Quirk_AU
+
+      - name: Zip VST3
+        run: |
+          cd build/Quirk_artefacts/Release/VST3
+          zip -r "$GITHUB_WORKSPACE/Quirk-macOS-VST3.zip" quirk.vst3
+
+      - name: Zip AU
+        run: |
+          cd build/Quirk_artefacts/Release/AU
+          zip -r "$GITHUB_WORKSPACE/Quirk-macOS-AU.zip" quirk.component
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            Quirk-macOS-VST3.zip
+            Quirk-macOS-AU.zip
+
+      - name: Cancel workflow if this job failed
+        if: failure()
+        uses: andymckay/cancel-action@0.5
+
+  build-windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      SCCACHE_DIR: ${{ github.workspace }}\sccache
+      SCCACHE_CACHE_SIZE: 2G
+
+    steps:
+      - name: Checkout (tag)
+        uses: actions/checkout@v4
+
+      - name: Patch CMakeLists version to match tag
+        shell: bash
+        run: |
+          CURRENT=$(sed -n 's/.*project(Quirk VERSION \([0-9]*\.[0-9]*\.[0-9]*\)).*/\1/p' CMakeLists.txt)
+          if [ "$CURRENT" != "$VERSION" ]; then
+            sed -i "s/project(Quirk VERSION ${CURRENT})/project(Quirk VERSION ${VERSION})/" CMakeLists.txt
+          fi
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+
+      - name: Setup MSVC dev environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Cache JUCE
+        id: cache-juce
+        uses: actions/cache@v4
+        with:
+          path: JUCE
+          key: juce-8.0.12
+
+      - name: Clone JUCE
+        if: steps.cache-juce.outputs.cache-hit != 'true'
+        run: git clone --depth 1 --branch 8.0.12 https://github.com/juce-framework/JUCE.git JUCE
+
+      - name: Cache sccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: sccache-release-windows-${{ hashFiles('Source/**', 'CMakeLists.txt') }}
+          restore-keys: sccache-release-windows-
+
+      - name: Cache CMake build directory
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: build-release-windows-${{ hashFiles('Source/**', 'CMakeLists.txt', '.github/workflows/release.yml') }}
+          restore-keys: build-release-windows-
+
+      - name: Configure (Release)
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache
+
+      - name: Build VST3
+        run: cmake --build build --target Quirk_VST3
+
+      - name: Zip VST3
+        shell: pwsh
+        run: Compress-Archive -Path "build\Quirk_artefacts\Release\VST3\quirk.vst3" -DestinationPath "Quirk-Windows-VST3.zip"
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: Quirk-Windows-VST3.zip
+
+      - name: Cancel workflow if this job failed
+        if: failure()
+        uses: andymckay/cancel-action@0.5
+
+  release:
+    needs: [version, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
+
+    steps:
+      - name: Checkout (tag)
+        uses: actions/checkout@v4
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: quirk ${{ env.VERSION }}
+          prerelease: ${{ contains(env.VERSION, '-') }}
+          generate_release_notes: true
+          files: |
+            Quirk-macOS-VST3.zip
+            Quirk-macOS-AU.zip
+            Quirk-Windows-VST3.zip

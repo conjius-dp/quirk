@@ -83,6 +83,7 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volumeAttachment;
 
     juce::Image logoImage;
+    juce::Image quirkLogoImage;
 
     std::unique_ptr<juce::ResizableCornerComponent> resizer;
 

@@ -22,9 +22,7 @@ namespace KnobDesign
     inline constexpr float rotationEndAngle   =  135.0f;
 
     inline constexpr float labelFontScale    = 0.18f;
-    inline constexpr float gainLabelScale    = 0.06f;
-    inline constexpr float dbTextScale       = 0.06f;
-    inline constexpr float latencyTextScale  = 0.017f;
+    inline constexpr float textBoxFontScale  = 0.06f;
 
     inline constexpr int   defaultWidth      = 650;
     inline constexpr int   defaultHeight     = 570;
@@ -47,13 +45,6 @@ namespace KnobDesign
         return ga.getBoundingBox(0, -1, true).getWidth();
     }
 }
-
-enum class KnobType
-{
-    Drive,
-    Tone,
-    Volume
-};
 
 class ConjusKnobLookAndFeel : public juce::LookAndFeel_V4
 {
@@ -109,16 +100,6 @@ public:
         }
     }
 
-    static void setKnobType(juce::Slider& slider, KnobType type)
-    {
-        slider.getProperties().set("knobType", static_cast<int>(type));
-    }
-
-    static KnobType getKnobType(juce::Slider& slider)
-    {
-        return static_cast<KnobType>(static_cast<int>(slider.getProperties().getWithDefault("knobType", 0)));
-    }
-
     void drawRotarySlider(juce::Graphics& g,
                           int x, int y, int width, int height,
                           float sliderPosProportional,
@@ -134,8 +115,6 @@ public:
         float diameter = juce::jmin(juce::jmin(sliderW, sliderH) * 0.78f,
                                     sliderW * 0.60f);
         float radius = diameter * 0.5f;
-
-        auto knobType = getKnobType(slider);
 
         float parentH = 0.0f;
         if (auto* editor = slider.getParentComponent())
@@ -185,7 +164,7 @@ public:
         float tickStartR = radius * tickGap;
         float tickEndR = radius * (tickGap + tickLength);
 
-        float defaultNorm = (knobType == KnobType::Drive) ? 0.407f : 0.5f;
+        float defaultNorm = 0.5f;
 
         float tickAngles[3] = {
             juce::degreesToRadians(rotationStartAngle),
@@ -220,25 +199,9 @@ public:
         float labelR = tickEndR + markerFontSize * 0.8f;
         float labelYOffset = fontSize * 0.05f;
 
-        juce::String leftLabel, midLabel, rightLabel;
-        if (knobType == KnobType::Drive)
-        {
-            leftLabel  = "0";
-            midLabel   = "5";
-            rightLabel = "100";
-        }
-        else if (knobType == KnobType::Tone)
-        {
-            leftLabel  = "0";
-            midLabel   = "50";
-            rightLabel = "100";
-        }
-        else
-        {
-            leftLabel  = "0";
-            midLabel   = "50";
-            rightLabel = "100";
-        }
+        juce::String leftLabel  = "0";
+        juce::String midLabel   = "50";
+        juce::String rightLabel = "100";
 
         float a0 = juce::degreesToRadians(rotationStartAngle);
         float lx0 = cx + std::sin(a0) * labelR;
@@ -273,9 +236,7 @@ public:
         {
             auto text = label.getText();
             auto* slider = dynamic_cast<juce::Slider*>(label.getParentComponent());
-            auto knobType = slider ? getKnobType(*slider) : KnobType::Drive;
-
-            juce::String suffix = (knobType == KnobType::Tone || knobType == KnobType::Volume) ? " %" : "";
+            juce::String suffix = " %";
 
             auto* editor = slider ? slider->getParentComponent() : nullptr;
             float windowH = editor ? static_cast<float>(editor->getHeight()) : 570.0f;
@@ -285,7 +246,7 @@ public:
             juce::String valueStr = text.replace(" %", "").trim();
 
             float valueW = KnobDesign::stringWidth(pillFont, valueStr);
-            float suffixW = suffix.isEmpty() ? 0.0f : KnobDesign::stringWidth(pillFont, suffix);
+            float suffixW = KnobDesign::stringWidth(pillFont, suffix);
             float totalW = valueW + suffixW;
 
             float windowW = editor ? static_cast<float>(editor->getWidth()) : 650.0f;

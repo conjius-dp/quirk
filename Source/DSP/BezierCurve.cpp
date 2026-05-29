@@ -327,24 +327,4 @@ void BezierCurve::buildFromSlots(BezierCurve& curve, const SlotValues& vals)
     }
 }
 
-float BezierCurve::lookupWithGain(float sample, float gain, const float* lut, int lutSize)
-{
-    float x = sample * gain;
-    float sign = 1.0f;
-    if (x < 0.0f)
-    {
-        sign = -1.0f;
-        x = -x;
-    }
-    if (x > 1.0f)
-        x = 1.0f;
-
-    float pos = x * static_cast<float>(lutSize - 1);
-    int idx = static_cast<int>(pos);
-    float frac = pos - static_cast<float>(idx);
-    if (idx >= lutSize - 1)
-        return sign * lut[lutSize - 1];
-
-    return sign * (lut[idx] + frac * (lut[idx + 1] - lut[idx]));
-}
 

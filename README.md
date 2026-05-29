@@ -1,14 +1,12 @@
 # quirk
 
-Synth instrument with an editable bezier curve waveshaper. PolyBLEP sawtooth oscillator shaped through a user-defined transfer function. Double-click the graph to add points, drag to reshape. Symmetric or asymmetric curve editing.
+Synth instrument with an editable bezier curve waveform. The curve defines the oscillator's waveshape directly. Double-click the graph to add control points, drag points and handles to reshape.
 
 VST3 (macOS, Windows), AU + Standalone (macOS).
 
 ## Usage
 
-- **Gain**: how hard the oscillator output hits the curve (0 = clean, 100 = hard clip).
-- **Graph**: double-click to add/remove points. Drag points and handles to reshape.
-- **Symmetric / Asymmetric**: mirror the curve or edit each half independently.
+- **Graph**: double-click to add/remove points. Drag points and handles to reshape the waveform.
 - **Volume**: output level.
 - **Power button** (top-right): hard bypass.
 
@@ -16,9 +14,7 @@ VST3 (macOS, Windows), AU + Standalone (macOS).
 
 | Parameter | Range | Default |
 |---|---|---|
-| Gain | 0 - 100 | 0.0 |
 | Volume | 0% - 100% | 50.0% |
-| Symmetric | on / off | on |
 | Bypass | on / off | off |
 
 ## Build

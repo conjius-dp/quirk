@@ -43,8 +43,6 @@ public:
     float evaluate(float x) const;
     void generateLUT(float* buffer) const;
 
-    static float lookupWithGain(float sample, float gain, const float* lut, int lutSize);
-
     struct SlotValues
     {
         static constexpr int kMaxSlots = 5;
@@ -90,7 +88,6 @@ private:
     };
 
     std::vector<Segment> getSegments() const;
-    void clampHandlesForSegment(float p0x, float p3x, float& outDx, float& inDx);
 
     static float cubicBezier(float t, float p0, float p1, float p2, float p3);
     static float cubicBezierDeriv(float t, float p0, float p1, float p2, float p3);

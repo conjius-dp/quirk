@@ -151,48 +151,6 @@ public:
             expectWithinAbsoluteError(lut[BezierCurve::kLutSize - 1], 0.0f, 0.001f);
         }
 
-        beginTest("lookupWithGain default negative arch");
-        {
-            BezierCurve curve;
-            float lut[BezierCurve::kLutSize];
-            curve.generateLUT(lut);
-
-            float result = BezierCurve::lookupWithGain(0.5f, 1.0f, lut, BezierCurve::kLutSize);
-            expectWithinAbsoluteError(result, -0.75f, 0.02f);
-        }
-
-        beginTest("lookupWithGain symmetry");
-        {
-            BezierCurve curve;
-            curve.addPoint(0.4f, 0.85f);
-            float lut[BezierCurve::kLutSize];
-            curve.generateLUT(lut);
-
-            float pos = BezierCurve::lookupWithGain(0.3f, 1.0f, lut, BezierCurve::kLutSize);
-            float neg = BezierCurve::lookupWithGain(-0.3f, 1.0f, lut, BezierCurve::kLutSize);
-            expectWithinAbsoluteError(pos, -neg, 0.001f);
-        }
-
-        beginTest("lookupWithGain clamping with high gain");
-        {
-            BezierCurve curve;
-            float lut[BezierCurve::kLutSize];
-            curve.generateLUT(lut);
-
-            float result = BezierCurve::lookupWithGain(0.5f, 100.0f, lut, BezierCurve::kLutSize);
-            expectWithinAbsoluteError(result, 0.0f, 0.01f);
-        }
-
-        beginTest("lookupWithGain zero input");
-        {
-            BezierCurve curve;
-            float lut[BezierCurve::kLutSize];
-            curve.generateLUT(lut);
-
-            float result = BezierCurve::lookupWithGain(0.0f, 50.0f, lut, BezierCurve::kLutSize);
-            expectWithinAbsoluteError(result, 0.0f, 0.001f);
-        }
-
         beginTest("reset restores default negative arch");
         {
             BezierCurve curve;

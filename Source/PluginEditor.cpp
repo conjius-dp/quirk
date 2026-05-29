@@ -11,7 +11,6 @@ QuirkAudioProcessorEditor::QuirkAudioProcessorEditor(QuirkAudioProcessor& p)
 
     volumeSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     volumeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 120, 30);
-    ConjusKnobLookAndFeel::setKnobType(volumeSlider, KnobType::Volume);
     volumeSlider.setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
     addAndMakeVisible(volumeSlider);
 
@@ -39,6 +38,9 @@ QuirkAudioProcessorEditor::QuirkAudioProcessorEditor(QuirkAudioProcessor& p)
         processorRef.getAPVTS(), "bypass", bypassButton);
 
     logoImage = juce::ImageCache::getFromMemory(
+        BinaryData::conjiusavatartransparentbg_png,
+        BinaryData::conjiusavatartransparentbg_pngSize);
+    quirkLogoImage = juce::ImageCache::getFromMemory(
         BinaryData::quirklogotransparentbg_png,
         BinaryData::quirklogotransparentbg_pngSize);
 
@@ -124,24 +126,21 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
     if (logoImage.isValid() && showChrome)
     {
         float scale = static_cast<float>(getWidth()) / static_cast<float>(KnobDesign::defaultWidth);
-        float aspect = static_cast<float>(logoImage.getWidth()) / static_cast<float>(logoImage.getHeight());
-        int baseH = static_cast<int>(30.0f * scale);
-        int baseW = static_cast<int>(baseH * aspect);
+        int baseSize = static_cast<int>(30.0f * scale);
         int padLeft = static_cast<int>(6.0f * scale);
         int baseX = padLeft;
-        int baseY = getHeight() - baseH;
-        logoBounds = { baseX, baseY, baseW, baseH };
+        int baseY = getHeight() - baseSize;
+        logoBounds = { baseX, baseY, baseSize, baseSize };
 
         float hoverScale = 1.0f + 0.2f * logoHoverProgress;
-        int drawW = static_cast<int>(baseW * hoverScale);
-        int drawH = static_cast<int>(baseH * hoverScale);
-        int drawX = baseX + (baseW - drawW) / 2;
-        int drawY = baseY + (baseH - drawH) / 2;
+        int drawSize = static_cast<int>(baseSize * hoverScale);
+        int drawX = baseX + (baseSize - drawSize) / 2;
+        int drawY = baseY + (baseSize - drawSize) / 2;
 
         float brightness = 0.35f + 0.65f * logoHoverProgress;
         g.setOpacity(brightness);
         g.drawImage(logoImage,
-                    drawX, drawY, drawW, drawH,
+                    drawX, drawY, drawSize, drawSize,
                     0, 0, logoImage.getWidth(), logoImage.getHeight());
         g.setOpacity(1.0f);
     }
@@ -150,10 +149,10 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
     float scaleF = w / static_cast<float>(KnobDesign::defaultWidth);
 
     {
-        float gOuterLeft = 267.246f * scaleF;
-        float gOuterTop = 54.5f * scaleF;
-        float gOuterW = 301.0f * scaleF;
-        float gOuterH = 189.0f * scaleF;
+        float gOuterLeft = 56.25f * scaleF;
+        float gOuterTop = 61.0f * scaleF;
+        float gOuterW = 527.0f * scaleF;
+        float gOuterH = 193.0f * scaleF;
 
         float gPad = 14.0f * scaleF;
         float gLeft = gOuterLeft + gPad;
@@ -167,22 +166,44 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
 
         graphBounds = juce::Rectangle<float>(gOuterLeft, gOuterTop, gOuterW, gOuterH).toNearestInt().expanded(2);
 
+        if (quirkLogoImage.isValid())
         {
-            float titleFontSize = 28.0f * scaleF;
-            g.setFont(conjusLAF.getBoldFont(titleFontSize));
-            g.setColour(KnobDesign::accentColour);
-            g.drawText("QUIRK",
-                       static_cast<int>(60.0f * scaleF), static_cast<int>(90.0f * scaleF),
-                       static_cast<int>(180.0f * scaleF), static_cast<int>(30.0f * scaleF),
-                       juce::Justification::centred);
+            float logoAspect = static_cast<float>(quirkLogoImage.getWidth())
+                             / static_cast<float>(quirkLogoImage.getHeight());
+            float logoX = 260.5f * scaleF;
+            float logoY = 267.85f * scaleF;
+            float logoW = 129.0f * scaleF;
+            float logoH = 50.0f * scaleF;
+            float drawH = logoW / logoAspect;
+            float drawY = logoY + (logoH - drawH) * 0.5f;
 
-            float subtitleFontSize = 14.0f * scaleF;
-            g.setFont(conjusLAF.getBoldFont(subtitleFontSize));
+            juce::AffineTransform logoTransform =
+                juce::AffineTransform::rotation(
+                    juce::degreesToRadians(-6.7317f),
+                    logoX + logoW * 0.5f,
+                    logoY + logoH * 0.5f);
+
+            g.saveState();
+            g.addTransform(logoTransform);
+            g.setOpacity(1.0f);
+            g.drawImage(quirkLogoImage,
+                        juce::Rectangle<float>(logoX, drawY, logoW, drawH));
+            g.restoreState();
+
+            float stX = 313.75f * scaleF;
+            float stY = 314.524f * scaleF;
+            float stW = 88.0f * scaleF;
+            float stFontSize = 10.0f * scaleF;
             g.setColour(KnobDesign::accentColour);
-            g.drawText("SYNTH",
-                       static_cast<int>(60.0f * scaleF), static_cast<int>(120.0f * scaleF),
-                       static_cast<int>(180.0f * scaleF), static_cast<int>(16.0f * scaleF),
-                       juce::Justification::centred);
+            g.setFont(conjusLAF.getBoldFont(stFontSize));
+            auto attr = juce::AttributedString();
+            attr.setJustification(juce::Justification::centred);
+            attr.setWordWrap(juce::AttributedString::none);
+            attr.append("WAVESHAPING\nSYNTHESIZER",
+                        conjusLAF.getBoldFont(stFontSize), KnobDesign::accentColour);
+            juce::TextLayout subtitleLayout;
+            subtitleLayout.createLayout(attr, stW);
+            subtitleLayout.draw(g, juce::Rectangle<float>(stX, stY, stW, 34.0f * scaleF));
         }
 
         float knobDiam = w * 0.216f;
@@ -240,18 +261,6 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
 
         g.setColour(KnobDesign::accentColour);
         g.strokePath(buildSegment(0.0f, 1.0f, totalN), stroke);
-
-        float labelSize = 13.0f * scaleF;
-        g.setFont(conjusLAF.getRegularFont(labelSize));
-        g.setColour(KnobDesign::accentColour.darker(0.5f));
-        g.drawText("-1",   271.0f * scaleF, 158.0f * scaleF, 18.0f * scaleF, 13.0f * scaleF, juce::Justification::centred);
-        g.drawText("1",    546.0f * scaleF, 159.0f * scaleF, 18.0f * scaleF, 13.0f * scaleF, juce::Justification::centred);
-        g.drawText("-0.5", 333.0f * scaleF, 157.5f * scaleF, 32.0f * scaleF, 13.0f * scaleF, juce::Justification::centred);
-        g.drawText("0.5",  477.0f * scaleF, 159.0f * scaleF, 20.0f * scaleF, 13.0f * scaleF, juce::Justification::centred);
-        g.drawText("1",    396.0f * scaleF,  61.0f * scaleF, 18.0f * scaleF, 13.0f * scaleF, juce::Justification::centred);
-        g.drawText("-1",   423.0f * scaleF, 222.0f * scaleF, 18.0f * scaleF, 13.0f * scaleF, juce::Justification::centred);
-        g.drawText("0.5",  387.0f * scaleF, 101.0f * scaleF, 20.0f * scaleF, 13.0f * scaleF, juce::Justification::centred);
-        g.drawText("-0.5", 422.0f * scaleF, 182.0f * scaleF, 32.0f * scaleF, 13.0f * scaleF, juce::Justification::centred);
 
         float pointR = 5.0f * scaleF;
         float handleR = 3.0f * scaleF;
@@ -376,7 +385,7 @@ void QuirkAudioProcessorEditor::resized()
     volumeLabel.setBounds(static_cast<int>(96.0f * sF), static_cast<int>(259.35f * sF),
                           static_cast<int>(72.0f * sF), static_cast<int>(17.0f * sF));
 
-    float dbFontSize = w * KnobDesign::dbTextScale;
+    float dbFontSize = w * KnobDesign::textBoxFontScale;
     int sliderBottom = static_cast<int>(h * 0.918f);
     int sliderTop = static_cast<int>(h * 0.04f);
     int sliderH = sliderBottom - sliderTop;

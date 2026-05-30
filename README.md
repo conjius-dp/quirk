@@ -20,14 +20,13 @@
   <a href="https://github.com/conjius-dp/quirk/releases"><img src="https://img.shields.io/github/downloads/conjius-dp/quirk/total?label=downloads&color=blue" alt="Total downloads"></a>
 </p>
 
-Waveshaping polysynth with an editable bezier curve waveform. The curve defines the oscillator's waveshape directly. Double-click the graph to add control points, drag points and handles to reshape. Symmetric or asymmetric curve editing. Up to 10 voices with oldest-voice stealing.
+Waveshaping polysynth with an editable bezier curve waveform. The curve defines the oscillator's waveshape directly. Double-click the graph to add control points, drag points and handles to reshape. Up to 10 voices with oldest-voice stealing.
 
 VST3 (macOS, Windows), AU + Standalone (macOS). Zero latency.
 
 ## Usage
 
 - **Graph**: double-click to add/remove points. Drag points and handles to reshape the waveform.
-- **Symmetric / Asymmetric**: mirror the curve or edit each half independently.
 - **ADSR**: attack, decay, sustain, release envelope per voice.
 - **Voices**: 1-10 polyphonic voices with oldest-voice stealing.
 - **Volume**: output level.

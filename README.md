@@ -19,7 +19,7 @@
   <a href="https://github.com/conjius-dp/quirk/releases"><img src="https://img.shields.io/github/downloads/conjius-dp/quirk/total?label=downloads&color=blue" alt="Total downloads"></a>
 </p>
 
-Waveshaping polysynth with an editable bezier curve waveform. The curve defines the oscillator's waveshape directly. Double-click the graph to add control points, drag points and handles to reshape. Up to 10 voices with oldest-voice stealing.
+Wavescanning polysynth with an editable bezier curve waveform and a 4-keyframe animation engine that morphs the whole patch over time. Double-click the graph to add control points, drag points and handles to reshape. Up to 10 voices with oldest-voice stealing.
 
 VST3 (macOS, Windows), AU + Standalone (macOS). Zero latency.
 
@@ -29,6 +29,12 @@ VST3 (macOS, Windows), AU + Standalone (macOS). Zero latency.
 - **ADSR**: attack, decay, sustain, release envelope per voice.
 - **Voices**: 1-10 polyphonic voices with oldest-voice stealing.
 - **Volume**: output level.
+- **Velocity**: how strongly note velocity affects voice loudness.
+- **Wavescan row** (A/B/C/D):
+  - Click a letter to edit that keyframe. Every knob, fader, and curve change is captured into the selected keyframe.
+  - **MODE** toggle: `WAVESCAN` cycles A→B→C→D→A while a note is held; `STATIC` holds keyframe A only.
+  - **CLOCK SOURCE** toggle: `INTERNAL` runs each transition in milliseconds; `HOST` locks transitions to the DAW grid (1/32 to 1/1, including dotted and triplet).
+  - Duration pills between letters set per-transition length. Drag vertically or scroll to change. The bottom pill is the D→A loopback.
 - **Power button** (top-right): hard bypass.
 
 ## Parameters
@@ -40,6 +46,7 @@ VST3 (macOS, Windows), AU + Standalone (macOS). Zero latency.
 | Decay | 1 - 5000 ms | 300 ms |
 | Sustain | 0% - 100% | 80.0% |
 | Release | 1 - 5000 ms | 200 ms |
+| Velocity | 0% - 100% | 100.0% |
 | Voices | 1 - 10 | 4 |
 | Bypass | on / off | off |
 

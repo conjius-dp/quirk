@@ -1,7 +1,7 @@
 # quirk
 
 <p align="center">
-  <picture><img src="https://conjius-dp.github.io/quirk/screenshot.png" width="373" alt="Quirk"></picture>
+  <picture><img src="https://conjius-dp.github.io/quirk/screenshot.png" width="680" alt="Quirk"></picture>
 </p>
 
 <p align="center">

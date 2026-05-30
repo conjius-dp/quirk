@@ -124,8 +124,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuirkAudioProcessor::createP
     params.push_back(std::make_unique<juce::AudioParameterInt>(
         juce::ParameterID("voices", 1), "Voices", 1, 10, 4));
 
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("velocity", 1), "Velocity",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f), 1.0f));
+
     addCurveParams(params, "rc_", true);
-    addCurveParams(params, "lc_", false);
+    addCurveParams(params, "lc_", true);
 
     return { params.begin(), params.end() };
 }
@@ -216,12 +220,14 @@ void QuirkAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     int readIdx = activeLutIndex_.load(std::memory_order_acquire);
     float volume = apvts.getRawParameterValue("volume")->load();
+    float velocitySens = apvts.getRawParameterValue("velocity")->load();
 
     float* outPtr = buffer.getWritePointer(0);
 
     for (int v = 0; v < VoiceAlloc::kMaxVoices; ++v)
     {
         voices_[v].setADSR(attackMs, decayMs, sustainPct / 100.0f, releaseMs);
+        voices_[v].setVelocitySensitivity(velocitySens);
 
         if (!voices_[v].isActive()) continue;
 

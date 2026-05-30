@@ -53,15 +53,15 @@ public:
             expectEquals(curve.getNumPoints(), 0);
         }
 
-        beginTest("max 5 points enforced");
+        beginTest("max points enforced");
         {
             BezierCurve curve;
-            for (int i = 1; i <= 5; ++i)
-                curve.addPoint(static_cast<float>(i) / 6.0f, 0.5f);
-            expectEquals(curve.getNumPoints(), 5);
+            for (int i = 1; i <= BezierCurve::kMaxPoints; ++i)
+                curve.addPoint(static_cast<float>(i) / static_cast<float>(BezierCurve::kMaxPoints + 1), 0.5f);
+            expectEquals(curve.getNumPoints(), BezierCurve::kMaxPoints);
             int overflow = curve.addPoint(0.95f, 0.5f);
             expectEquals(overflow, -1);
-            expectEquals(curve.getNumPoints(), 5);
+            expectEquals(curve.getNumPoints(), BezierCurve::kMaxPoints);
         }
 
         beginTest("remove point decreases count");
@@ -227,9 +227,9 @@ public:
         beginTest("buildFromSlots multiple slots sorted by x");
         {
             BezierCurve::SlotValues vals;
-            vals.slots[3].on = true;
-            vals.slots[3].x = 0.7f;
-            vals.slots[3].y = 0.8f;
+            vals.slots[2].on = true;
+            vals.slots[2].x = 0.7f;
+            vals.slots[2].y = 0.8f;
             vals.slots[0].on = true;
             vals.slots[0].x = 0.3f;
             vals.slots[0].y = 0.5f;
@@ -287,26 +287,26 @@ public:
         beginTest("curvePointToSlot mapping");
         {
             BezierCurve::SlotValues vals;
-            vals.slots[3].on = true;
-            vals.slots[3].x = 0.7f;
-            vals.slots[3].y = 0.8f;
+            vals.slots[2].on = true;
+            vals.slots[2].x = 0.7f;
+            vals.slots[2].y = 0.8f;
             vals.slots[0].on = true;
             vals.slots[0].x = 0.3f;
             vals.slots[0].y = 0.5f;
             expectEquals(vals.curvePointToSlot(0), 0);
-            expectEquals(vals.curvePointToSlot(1), 3);
+            expectEquals(vals.curvePointToSlot(1), 2);
             expectEquals(vals.curvePointToSlot(2), -1);
         }
 
         beginTest("slotToCurvePoint mapping");
         {
             BezierCurve::SlotValues vals;
-            vals.slots[3].on = true;
-            vals.slots[3].x = 0.7f;
+            vals.slots[2].on = true;
+            vals.slots[2].x = 0.7f;
             vals.slots[0].on = true;
             vals.slots[0].x = 0.3f;
             expectEquals(vals.slotToCurvePoint(0), 0);
-            expectEquals(vals.slotToCurvePoint(3), 1);
+            expectEquals(vals.slotToCurvePoint(2), 1);
             expectEquals(vals.slotToCurvePoint(1), -1);
         }
     }

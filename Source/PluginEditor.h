@@ -6,6 +6,27 @@
 #include "BypassButton.h"
 #include "BinaryData.h"
 
+class VelocitySlider : public juce::Slider
+{
+public:
+    std::function<void()> onDoubleClick;
+
+    void mouseDoubleClick(const juce::MouseEvent&) override
+    {
+        if (onDoubleClick)
+            onDoubleClick();
+    }
+
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override
+    {
+        auto reversed = wheel;
+        reversed.deltaY = -wheel.deltaY;
+        juce::Slider::mouseWheelMove(e, reversed);
+    }
+
+    void paint(juce::Graphics&) override {}
+};
+
 class AnimatedSlider : public juce::Slider
 {
 public:
@@ -91,6 +112,8 @@ private:
 
     AnimatedSlider attackSlider, decaySlider, sustainSlider, releaseSlider;
 
+    VelocitySlider velocitySlider;
+
     BypassButton bypassButton;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volumeAttachment;
@@ -98,6 +121,7 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> decayAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sustainAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> releaseAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> velocityAttachment;
 
     juce::Image logoImage;
     juce::Image quirkLogoImage;
@@ -116,8 +140,9 @@ private:
         double currentValue = 0.0;
     };
     SliderAnimation volumeAnim;
+    SliderAnimation velocityAnim;
 
-    void startSnapAnimation(juce::Slider& slider, SliderAnimation& anim);
+    void startSnapAnimation(juce::Slider& slider, SliderAnimation& anim, const juce::String& paramId);
     void updateSnapAnimation(juce::Slider& slider, SliderAnimation& anim);
 
     int lastCurveVersion = -1;
@@ -131,6 +156,7 @@ private:
 
     int faderPillHover_ = -1;
     bool volumePillHover_ = false;
+    bool velocityPillHover_ = false;
 
     juce::Slider* pillDragSlider_ = nullptr;
     float pillDragStartY_ = 0.0f;

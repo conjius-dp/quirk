@@ -23,7 +23,7 @@ QuirkAudioProcessorEditor::QuirkAudioProcessorEditor(QuirkAudioProcessor& p)
 
     volumeSlider.onValueChange = [this]() { repaint(); };
     volumeSlider.onDoubleClick = [this]() {
-        startSnapAnimation(volumeSlider, volumeAnim);
+        startSnapAnimation(volumeSlider, volumeAnim, "volume");
     };
 
     auto setupFader = [this](juce::Slider& slider, const juce::String& paramId,
@@ -39,6 +39,22 @@ QuirkAudioProcessorEditor::QuirkAudioProcessorEditor(QuirkAudioProcessor& p)
     setupFader(decaySlider, "decay", decayAttachment);
     setupFader(sustainSlider, "sustain", sustainAttachment);
     setupFader(releaseSlider, "release", releaseAttachment);
+
+    velocitySlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    velocitySlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
+    velocitySlider.setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
+    velocitySlider.setRotaryParameters(juce::degreesToRadians(KnobDesign::rotationStartAngle),
+                                        juce::degreesToRadians(KnobDesign::rotationEndAngle),
+                                        true);
+    addAndMakeVisible(velocitySlider);
+
+    velocityAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processorRef.getAPVTS(), "velocity", velocitySlider);
+
+    velocitySlider.onValueChange = [this]() { repaint(); };
+    velocitySlider.onDoubleClick = [this]() {
+        startSnapAnimation(velocitySlider, velocityAnim, "velocity");
+    };
 
     addAndMakeVisible(bypassButton);
     bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
@@ -114,10 +130,14 @@ void QuirkAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)
     volumePillHover_ = pos.x >= volPx && pos.x <= volPx + 60.28f * sF
                     && pos.y >= volPy && pos.y <= volPy + 21.5f * sF;
 
+    float velPx = 534.7784347389604f * sF, velPy = 409.3974433495965f * sF;
+    velocityPillHover_ = pos.x >= velPx && pos.x <= velPx + 46.0f * sF
+                      && pos.y >= velPy && pos.y <= velPy + 13.0f * sF;
+
     bool overBtn = voiceMinusHoverTarget_ || voicePlusHoverTarget_;
     if (overBtn)
         setMouseCursor(juce::MouseCursor::PointingHandCursor);
-    else if (faderPillHover_ >= 0 || volumePillHover_)
+    else if (faderPillHover_ >= 0 || volumePillHover_ || velocityPillHover_)
         setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
     else
         setMouseCursor(juce::MouseCursor::NormalCursor);
@@ -132,6 +152,7 @@ void QuirkAudioProcessorEditor::mouseExit(const juce::MouseEvent& e)
         voicePlusHoverTarget_ = false;
         faderPillHover_ = -1;
         volumePillHover_ = false;
+        velocityPillHover_ = false;
         setMouseCursor(juce::MouseCursor::NormalCursor);
     }
 }
@@ -160,6 +181,7 @@ void QuirkAudioProcessorEditor::timerCallback()
         }
     };
     animateHover(volumeSlider, volumeSlider.isMouseOverOrDragging(true) || volumePillHover_);
+    animateHover(velocitySlider, velocitySlider.isMouseOverOrDragging(true) || velocityPillHover_);
 
     juce::Slider* faderSliders[4] = { &attackSlider, &decaySlider, &sustainSlider, &releaseSlider };
     for (int i = 0; i < 4; ++i)
@@ -188,6 +210,7 @@ void QuirkAudioProcessorEditor::timerCallback()
     if (hoverDirty) repaint();
 
     updateSnapAnimation(volumeSlider, volumeAnim);
+    updateSnapAnimation(velocitySlider, velocityAnim);
 
     int curVer = processorRef.curveVersion_.load(std::memory_order_relaxed);
     if (curVer != lastCurveVersion)
@@ -558,6 +581,121 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
                                           16.0f * scaleF, pillH),
                    juce::Justification::centred);
     }
+
+    {
+        float velKnobX = 540.0f * scaleF;
+        float velKnobY = 361.0f * scaleF;
+        float velKnobW = 35.0f * scaleF;
+        float velRadius = velKnobW * 0.5f;
+        float velCx = velKnobX + velRadius;
+        float velCy = velKnobY + velRadius;
+
+        float volSliderBoundsW = (w * 0.2088f) * 0.90f;
+        float volSliderH = static_cast<float>(getHeight()) * 0.878f;
+        float volDiameter = juce::jmin(juce::jmin(volSliderBoundsW, volSliderH) * 0.78f,
+                                       volSliderBoundsW * 0.60f);
+        float strokeRef = volDiameter;
+
+        float velStrokeW = strokeRef * KnobDesign::knobStrokeFrac;
+        float velIndW    = strokeRef * KnobDesign::indicatorWidthFrac;
+        float velTickW   = strokeRef * KnobDesign::tickStrokeFrac;
+
+        float velHover = static_cast<float>(
+            velocitySlider.getProperties().getWithDefault("hoverProgress", 0.0));
+        auto velInteractive = KnobDesign::accentColour.interpolatedWith(
+            KnobDesign::accentHoverColour, velHover);
+
+        g.setColour(KnobDesign::bgColour);
+        g.fillEllipse(velCx - velRadius, velCy - velRadius, velKnobW, velKnobW);
+
+        g.setColour(velInteractive);
+        g.drawEllipse(velCx - velRadius + velStrokeW * 0.5f,
+                      velCy - velRadius + velStrokeW * 0.5f,
+                      velKnobW - velStrokeW,
+                      velKnobW - velStrokeW,
+                      velStrokeW);
+
+        float velNorm = static_cast<float>(velocitySlider.getValue());
+        float velAngle = KnobDesign::normToAngleRad(velNorm);
+        float velInnerR = velRadius * KnobDesign::indicatorStart;
+        float velOuterR = velRadius * KnobDesign::indicatorEnd;
+        juce::Path velIndicator;
+        velIndicator.startNewSubPath(velCx + std::sin(velAngle) * velInnerR,
+                                     velCy - std::cos(velAngle) * velInnerR);
+        velIndicator.lineTo(velCx + std::sin(velAngle) * velOuterR,
+                            velCy - std::cos(velAngle) * velOuterR);
+        g.strokePath(velIndicator,
+                     juce::PathStrokeType(velIndW,
+                                          juce::PathStrokeType::curved,
+                                          juce::PathStrokeType::rounded));
+
+        float velTickStartR = velRadius * KnobDesign::tickGap;
+        float velTickEndR   = velRadius * (KnobDesign::tickGap + KnobDesign::tickLength);
+        float velTickAngles[3] = {
+            juce::degreesToRadians(KnobDesign::rotationStartAngle),
+            KnobDesign::normToAngleRad(0.5f),
+            juce::degreesToRadians(KnobDesign::rotationEndAngle)
+        };
+
+        g.setColour(KnobDesign::accentColour);
+        float velHalfTickW = velTickW * 0.5f;
+        for (int i = 0; i < 3; ++i)
+        {
+            juce::Path tick;
+            tick.startNewSubPath(velCx + std::sin(velTickAngles[i]) * (velTickStartR + velHalfTickW),
+                                 velCy - std::cos(velTickAngles[i]) * (velTickStartR + velHalfTickW));
+            tick.lineTo(velCx + std::sin(velTickAngles[i]) * (velTickEndR - velHalfTickW),
+                        velCy - std::cos(velTickAngles[i]) * (velTickEndR - velHalfTickW));
+            g.strokePath(tick,
+                         juce::PathStrokeType(velTickW,
+                                              juce::PathStrokeType::curved,
+                                              juce::PathStrokeType::rounded));
+        }
+
+        float velTlFont = 9.0f * scaleF;
+        g.setFont(conjusLAF.getBoldFont(velTlFont));
+        juce::String velTickLabels[3] = { "0", "50", "100" };
+        for (int i = 0; i < 3; ++i)
+        {
+            float a = velTickAngles[i];
+            float lr = velTickEndR + velTlFont * 0.8f;
+            float yOff = velTlFont * 0.05f;
+            if (i == 1)
+            {
+                lr = velTickEndR + velTlFont * 0.3f;
+                yOff = -velTlFont * 0.5f;
+            }
+            float lx = velCx + std::sin(a) * lr;
+            float ly = velCy - std::cos(a) * lr + yOff;
+            g.drawText(velTickLabels[i],
+                       juce::Rectangle<float>(lx - velTlFont * 2.5f,
+                                              ly - velTlFont * 0.5f,
+                                              velTlFont * 5.0f,
+                                              velTlFont * 1.2f),
+                       juce::Justification::centred, false);
+        }
+
+        float velLabelFont = 10.0f * scaleF;
+        g.setFont(conjusLAF.getBoldFont(velLabelFont)
+            .withExtraKerningFactor(1.0f / velLabelFont));
+        g.drawText("VELOCITY",
+                   juce::Rectangle<float>(523.0f * scaleF, 323.568f * scaleF,
+                                          68.0f * scaleF, 12.0f * scaleF),
+                   juce::Justification::centred);
+
+        auto velPillColour = KnobDesign::accentColour.interpolatedWith(
+            KnobDesign::accentHoverColour, velHover);
+        juce::Rectangle<float> velPillRect(534.7784347389604f * scaleF,
+                                            409.3974433495965f * scaleF,
+                                            46.0f * scaleF, 13.0f * scaleF);
+        g.setColour(velPillColour);
+        g.fillRoundedRectangle(velPillRect, 6.5f * scaleF);
+
+        juce::String velPillText = juce::String(velocitySlider.getValue() * 100.0, 1) + " %";
+        g.setColour(KnobDesign::bgColour);
+        g.setFont(conjusLAF.getBoldFont(9.0f * scaleF));
+        g.drawText(velPillText, velPillRect, juce::Justification::centred);
+    }
 }
 
 void QuirkAudioProcessorEditor::paintOverChildren(juce::Graphics& g)
@@ -656,11 +794,21 @@ void QuirkAudioProcessorEditor::resized()
             faderSliders[i]->setPaintingIsUnclipped(true);
         }
     }
+
+    {
+        float velX = 540.0f * sF;
+        float velY = 361.0f * sF;
+        float velSize = 35.0f * sF;
+        velocitySlider.setMouseDragSensitivity(static_cast<int>(w * 0.5f));
+        velocitySlider.setBounds(static_cast<int>(velX), static_cast<int>(velY),
+                                  static_cast<int>(velSize), static_cast<int>(velSize));
+        velocitySlider.setPaintingIsUnclipped(true);
+    }
 }
 
-void QuirkAudioProcessorEditor::startSnapAnimation(juce::Slider& slider, SliderAnimation& anim)
+void QuirkAudioProcessorEditor::startSnapAnimation(juce::Slider& slider, SliderAnimation& anim, const juce::String& paramId)
 {
-    auto* param = processorRef.getAPVTS().getParameter("volume");
+    auto* param = processorRef.getAPVTS().getParameter(paramId);
     if (param == nullptr) return;
 
     anim.currentValue = slider.getValue();
@@ -858,6 +1006,16 @@ void QuirkAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
             pillDragSlider_ = &volumeSlider;
             pillDragStartY_ = my;
             pillDragStartValue_ = volumeSlider.getValue();
+            pillDragSensitivity_ = static_cast<float>(getWidth()) * 0.5f;
+            return;
+        }
+
+        float velPx = 534.7784347389604f * sF2, velPy = 409.3974433495965f * sF2;
+        if (mx >= velPx && mx <= velPx + 46.0f * sF2 && my >= velPy && my <= velPy + 13.0f * sF2)
+        {
+            pillDragSlider_ = &velocitySlider;
+            pillDragStartY_ = my;
+            pillDragStartValue_ = velocitySlider.getValue();
             pillDragSensitivity_ = static_cast<float>(getWidth()) * 0.5f;
             return;
         }
@@ -1071,6 +1229,15 @@ void QuirkAudioProcessorEditor::mouseWheelMove(const juce::MouseEvent& e,
     {
         auto localE = e.getEventRelativeTo(&volumeSlider);
         volumeSlider.mouseWheelMove(localE, wheel);
+        return;
+    }
+
+    float velPx = 534.7784347389604f * sF, velPy = 409.3974433495965f * sF;
+    if (pos.x >= velPx && pos.x <= velPx + 46.0f * sF
+        && pos.y >= velPy && pos.y <= velPy + 13.0f * sF)
+    {
+        auto localE = e.getEventRelativeTo(&velocitySlider);
+        velocitySlider.mouseWheelMove(localE, wheel);
         return;
     }
 

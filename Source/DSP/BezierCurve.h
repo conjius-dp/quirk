@@ -22,7 +22,7 @@ class BezierCurve
 {
 public:
     static constexpr int kLutSize = 2048;
-    static constexpr int kMaxPoints = 5;
+    static constexpr int kMaxPoints = 3;
     static constexpr float kMinGap = 0.005f;
 
     BezierCurve();
@@ -45,7 +45,7 @@ public:
 
     struct SlotValues
     {
-        static constexpr int kMaxSlots = 5;
+        static constexpr int kMaxSlots = 3;
 
         float startOutDx = 1.0f / 3.0f;
         float startOutDy = -1.0f;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include "DSP/ADSREnvelope.h"
 
@@ -10,6 +11,7 @@ public:
     void noteOn(int midiNote, float velocity);
     void noteOff(int midiNote);
     void setADSR(float attackMs, float decayMs, float sustainLevel, float releaseMs);
+    void setVelocitySensitivity(float s) { velocitySensitivity_ = std::clamp(s, 0.0f, 1.0f); }
     void renderBlock(float* output, int numSamples,
                      const float* lut, const float* leftLut, int lutSize,
                      float volume);
@@ -21,6 +23,7 @@ private:
     double phase_ = 0.0;
     double phaseIncrement_ = 0.0;
     float velocity_ = 0.0f;
+    float velocitySensitivity_ = 1.0f;
     int currentNote_ = -1;
     ADSREnvelope envelope_;
 

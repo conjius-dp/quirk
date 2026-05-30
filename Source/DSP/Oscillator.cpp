@@ -58,7 +58,8 @@ void Oscillator::renderBlock(float* output, int numSamples,
         return;
     }
 
-    const float amp = velocity_ * volume;
+    const float effectiveVel = (1.0f - velocitySensitivity_) + velocitySensitivity_ * velocity_;
+    const float amp = effectiveVel * volume;
 
     for (int i = 0; i < numSamples; ++i)
     {

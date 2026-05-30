@@ -1,6 +1,40 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+static const char* kAnimatedParamIds[AnimationEngine::kNumParams] = {
+    "volume", "attack", "decay", "sustain", "release", "velocity",
+    "rc_sh_dx", "rc_sh_dy", "rc_eh_dx", "rc_eh_dy",
+    "rc_p0_on", "rc_p0_x", "rc_p0_y", "rc_p0_idx", "rc_p0_idy", "rc_p0_odx", "rc_p0_ody",
+    "rc_p1_on", "rc_p1_x", "rc_p1_y", "rc_p1_idx", "rc_p1_idy", "rc_p1_odx", "rc_p1_ody",
+    "rc_p2_on", "rc_p2_x", "rc_p2_y", "rc_p2_idx", "rc_p2_idy", "rc_p2_odx", "rc_p2_ody",
+    "lc_sh_dx", "lc_sh_dy", "lc_eh_dx", "lc_eh_dy",
+    "lc_p0_on", "lc_p0_x", "lc_p0_y", "lc_p0_idx", "lc_p0_idy", "lc_p0_odx", "lc_p0_ody",
+    "lc_p1_on", "lc_p1_x", "lc_p1_y", "lc_p1_idx", "lc_p1_idy", "lc_p1_odx", "lc_p1_ody",
+    "lc_p2_on", "lc_p2_x", "lc_p2_y", "lc_p2_idx", "lc_p2_idy", "lc_p2_odx", "lc_p2_ody",
+};
+
+const char* QuirkAudioProcessor::getAnimatedParamId(int idx)
+{
+    if (idx < 0 || idx >= AnimationEngine::kNumParams) return nullptr;
+    return kAnimatedParamIds[idx];
+}
+
+int QuirkAudioProcessor::paramIdToIndex(const juce::String& paramId)
+{
+    for (int i = 0; i < AnimationEngine::kNumParams; ++i)
+        if (paramId == kAnimatedParamIds[i])
+            return i;
+    return -1;
+}
+
+void QuirkAudioProcessor::setKeyframeParamForAllFrames(const juce::String& paramId, float value)
+{
+    const int idx = paramIdToIndex(paramId);
+    if (idx < 0) return;
+    for (int f = 0; f < AnimationEngine::kNumKeyframes; ++f)
+        animationEngine_.setKeyframeValue(f, idx, value);
+}
+
 static void registerCurveListeners(juce::AudioProcessorValueTreeState& apvts,
                                     juce::AudioProcessorValueTreeState::Listener* listener,
                                     const juce::String& prefix)
@@ -52,6 +86,7 @@ QuirkAudioProcessor::QuirkAudioProcessor()
     registerCurveListeners(apvts, &curveParamListener_, "lc_");
     updateDisplayCurves();
     rebuildLUT();
+    initializeKeyframesFromCurrentParams();
 }
 
 QuirkAudioProcessor::~QuirkAudioProcessor()
@@ -196,19 +231,61 @@ void QuirkAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                           msg.getNoteNumber());
             voices_[v].noteOn(msg.getNoteNumber(), msg.getFloatVelocity());
             voiceAge_[v] = nextAge_++;
+            animationEngine_.noteOn(msg.getNoteNumber());
         }
         else if (msg.isNoteOff())
         {
             for (int i = 0; i < VoiceAlloc::kMaxVoices; ++i)
                 voices_[i].noteOff(msg.getNoteNumber());
+            animationEngine_.noteOff(msg.getNoteNumber());
         }
         else if (msg.isAllNotesOff() || msg.isAllSoundOff())
         {
             for (int i = 0; i < VoiceAlloc::kMaxVoices; ++i)
                 voices_[i].noteOff(-1);
+            animationEngine_.allNotesOff();
         }
     }
     midiMessages.clear();
+
+    {
+        double bpm = 0.0, ppqPos = 0.0;
+        bool playheadValid = false;
+        if (auto* playhead = getPlayHead())
+        {
+            if (auto pos = playhead->getPosition())
+            {
+                if (auto bpmOpt = pos->getBpm())
+                    bpm = *bpmOpt;
+                if (auto ppqOpt = pos->getPpqPosition())
+                    ppqPos = *ppqOpt;
+                playheadValid = bpm > 0.0;
+            }
+        }
+
+        const bool engineWrote = animationEngine_.processBlock(numSamples, getSampleRate(),
+                                                                bpm, ppqPos, playheadValid, animScratch_);
+        if (engineWrote)
+        {
+            animationWritingInProgress_.store(true, std::memory_order_release);
+            for (int i = 0; i < AnimationEngine::kNumParams; ++i)
+            {
+                if (auto* p = apvts.getParameter(kAnimatedParamIds[i]))
+                {
+                    const float clamped = juce::jlimit(0.0f, 1.0f, animScratch_[static_cast<size_t>(i)]);
+                    p->setValueNotifyingHost(clamped);
+                }
+            }
+            animationWritingInProgress_.store(false, std::memory_order_release);
+        }
+
+        const bool nowAnimating = animationEngine_.isPlaying() && animationEngine_.getAnimatedMode();
+        if (previouslyAnimating_ && !nowAnimating)
+        {
+            loadSelectedKeyframeIntoApvts();
+        }
+        previouslyAnimating_ = nowAnimating;
+    }
 
     if (curveParamsDirty_.exchange(false, std::memory_order_acquire))
         rebuildLUTFromParams();
@@ -308,6 +385,43 @@ int QuirkAudioProcessor::findFreeSlot(const juce::String& prefix) const
     return -1;
 }
 
+void QuirkAudioProcessor::initializeKeyframesFromCurrentParams()
+{
+    AnimationEngine::AnimatedParams snapshot{};
+    for (int i = 0; i < AnimationEngine::kNumParams; ++i)
+    {
+        if (auto* p = apvts.getParameter(kAnimatedParamIds[i]))
+            snapshot[static_cast<size_t>(i)] = p->getValue();
+    }
+    for (int f = 0; f < AnimationEngine::kNumKeyframes; ++f)
+        animationEngine_.writeKeyframe(f, snapshot);
+}
+
+void QuirkAudioProcessor::loadSelectedKeyframeIntoApvts()
+{
+    AnimationEngine::AnimatedParams snapshot{};
+    animationEngine_.getKeyframeValues(animationEngine_.getSelectedKeyframe(), snapshot);
+    for (int i = 0; i < AnimationEngine::kNumParams; ++i)
+    {
+        if (auto* p = apvts.getParameter(kAnimatedParamIds[i]))
+        {
+            const float clamped = juce::jlimit(0.0f, 1.0f, snapshot[static_cast<size_t>(i)]);
+            p->setValueNotifyingHost(clamped);
+        }
+    }
+}
+
+void QuirkAudioProcessor::captureCurrentToSelectedKeyframe()
+{
+    AnimationEngine::AnimatedParams snapshot{};
+    for (int i = 0; i < AnimationEngine::kNumParams; ++i)
+    {
+        if (auto* p = apvts.getParameter(kAnimatedParamIds[i]))
+            snapshot[static_cast<size_t>(i)] = p->getValue();
+    }
+    animationEngine_.writeKeyframe(animationEngine_.getSelectedKeyframe(), snapshot);
+}
+
 void QuirkAudioProcessor::updateDisplayCurves()
 {
     auto rcVals = readSlotValues("rc_");
@@ -381,9 +495,75 @@ static BezierCurve::SlotValues legacyTreeToSlots(const juce::ValueTree& child)
     return v;
 }
 
+static juce::ValueTree animationToValueTree(AnimationEngine& engine)
+{
+    juce::ValueTree tree("Animation");
+    tree.setProperty("animatedMode",   engine.getAnimatedMode() ? 1 : 0, nullptr);
+    tree.setProperty("hostClock",      engine.getHostClock()    ? 1 : 0, nullptr);
+    tree.setProperty("selectedFrame",  engine.getSelectedKeyframe(),     nullptr);
+
+    for (int t = 0; t < AnimationEngine::kNumTransitions; ++t)
+    {
+        tree.setProperty("internalMs" + juce::String(t),
+                         engine.getInternalDuration(t), nullptr);
+        tree.setProperty("hostDiv" + juce::String(t),
+                         static_cast<int>(engine.getHostDuration(t)), nullptr);
+    }
+
+    AnimationEngine::AnimatedParams snapshot{};
+    for (int f = 0; f < AnimationEngine::kNumKeyframes; ++f)
+    {
+        engine.getKeyframeValues(f, snapshot);
+        juce::ValueTree frame("Frame");
+        frame.setProperty("index", f, nullptr);
+        for (int p = 0; p < AnimationEngine::kNumParams; ++p)
+            frame.setProperty("p" + juce::String(p),
+                              snapshot[static_cast<size_t>(p)], nullptr);
+        tree.appendChild(frame, nullptr);
+    }
+    return tree;
+}
+
+static void animationFromValueTree(AnimationEngine& engine, const juce::ValueTree& tree)
+{
+    if (!tree.isValid()) return;
+    engine.setAnimatedMode(static_cast<int>(tree.getProperty("animatedMode", 1)) != 0);
+    engine.setHostClock   (static_cast<int>(tree.getProperty("hostClock",    0)) != 0);
+    engine.selectKeyframe (static_cast<int>(tree.getProperty("selectedFrame", 0)));
+
+    for (int t = 0; t < AnimationEngine::kNumTransitions; ++t)
+    {
+        if (tree.hasProperty("internalMs" + juce::String(t)))
+            engine.setInternalDuration(t, static_cast<float>(tree.getProperty("internalMs" + juce::String(t))));
+        if (tree.hasProperty("hostDiv" + juce::String(t)))
+        {
+            int v = static_cast<int>(tree.getProperty("hostDiv" + juce::String(t)));
+            if (v >= 0 && v < static_cast<int>(HostDivision::NumDivisions))
+                engine.setHostDuration(t, static_cast<HostDivision>(v));
+        }
+    }
+
+    for (int i = 0; i < tree.getNumChildren(); ++i)
+    {
+        auto frame = tree.getChild(i);
+        if (!frame.hasType("Frame")) continue;
+        int idx = static_cast<int>(frame.getProperty("index", -1));
+        if (idx < 0 || idx >= AnimationEngine::kNumKeyframes) continue;
+        AnimationEngine::AnimatedParams snapshot{};
+        for (int p = 0; p < AnimationEngine::kNumParams; ++p)
+        {
+            auto key = "p" + juce::String(p);
+            if (frame.hasProperty(key))
+                snapshot[static_cast<size_t>(p)] = static_cast<float>(frame.getProperty(key));
+        }
+        engine.writeKeyframe(idx, snapshot);
+    }
+}
+
 void QuirkAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
+    state.appendChild(animationToValueTree(animationEngine_), nullptr);
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
@@ -414,10 +594,29 @@ void QuirkAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
             tree.removeChild(leftChild, nullptr);
         }
 
+        auto animChild = tree.getChildWithName("Animation");
+        bool hasAnim = animChild.isValid();
+        juce::ValueTree animChildCopy;
+        if (hasAnim)
+        {
+            animChildCopy = animChild.createCopy();
+            tree.removeChild(animChild, nullptr);
+        }
+
         apvts.replaceState(tree);
 
         if (hasLegacyRC) writeSlotValues("rc_", legacyRC);
         if (hasLegacyLC) writeSlotValues("lc_", legacyLC);
+
+        if (hasAnim)
+        {
+            animationFromValueTree(animationEngine_, animChildCopy);
+            loadSelectedKeyframeIntoApvts();
+        }
+        else
+        {
+            initializeKeyframesFromCurrentParams();
+        }
 
         updateDisplayCurves();
         rebuildLUT();

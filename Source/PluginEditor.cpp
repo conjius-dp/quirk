@@ -105,19 +105,19 @@ void QuirkAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)
 
     float sF = static_cast<float>(getWidth()) / static_cast<float>(KnobDesign::defaultWidth);
 
-    float vpX = 527.0f * sF, vpY = 286.0f * sF;
+    float vpX = 508.0f * sF, vpY = 287.181f * sF;
     float vpW = 60.0f * sF, vpH = 22.0f * sF;
     bool overPill = pos.x >= vpX && pos.x <= vpX + vpW
                  && pos.y >= vpY && pos.y <= vpY + vpH;
     voiceMinusHoverTarget_ = overPill && pos.x < vpX + 20.0f * sF;
     voicePlusHoverTarget_  = overPill && pos.x > vpX + 40.0f * sF;
 
-    float faderPillXs[4] = { 230.75f, 300.75f, 370.75f, 440.75f };
+    float faderPillXs[4] = { 199.75f, 269.75f, 339.75f, 409.75f };
     faderPillHover_ = -1;
     for (int i = 0; i < 4; ++i)
     {
         float px = faderPillXs[i] * sF;
-        float py = 416.974f * sF;
+        float py = 418.155f * sF;
         if (pos.x >= px && pos.x <= px + 60.0f * sF
             && pos.y >= py && pos.y <= py + 22.0f * sF)
         {
@@ -126,18 +126,68 @@ void QuirkAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)
         }
     }
 
-    float volPx = 95.86f * sF, volPy = 415.5f * sF;
+    float volPx = 76.86f * sF, volPy = 416.681f * sF;
     volumePillHover_ = pos.x >= volPx && pos.x <= volPx + 60.28f * sF
                     && pos.y >= volPy && pos.y <= volPy + 21.5f * sF;
 
-    float velPx = 534.7784347389604f * sF, velPy = 409.3974433495965f * sF;
+    float velPx = 515.778f * sF, velPy = 410.578f * sF;
     velocityPillHover_ = pos.x >= velPx && pos.x <= velPx + 46.0f * sF
                       && pos.y >= velPy && pos.y <= velPy + 13.0f * sF;
 
-    bool overBtn = voiceMinusHoverTarget_ || voicePlusHoverTarget_;
+    const float kfX[4] = { 166.75f, 266.75f, 366.75f, 466.75f };
+    const float kfY = 465.181f, kfSize = 24.0f;
+    keyframeHover_ = -1;
+    for (int i = 0; i < 4; ++i)
+    {
+        const float x = kfX[i] * sF;
+        const float y = kfY * sF;
+        const float s = kfSize * sF;
+        if (pos.x >= x && pos.x <= x + s && pos.y >= y && pos.y <= y + s)
+        {
+            keyframeHover_ = i;
+            break;
+        }
+    }
+
+    const float pillXs[4] = { 206.75f, 306.75f, 406.75f, 306.75f };
+    const float pillYs[4] = { 470.181f, 470.181f, 470.181f, 501.181f };
+    const float dpW = 44.0f, dpH = 14.0f, sideW = 10.0f;
+    durationPillMinusHover_ = -1;
+    durationPillPlusHover_ = -1;
+    int durationPillBodyHover = -1;
+    for (int i = 0; i < 4; ++i)
+    {
+        const float x = pillXs[i] * sF;
+        const float y = pillYs[i] * sF;
+        const float w = dpW * sF;
+        const float h = dpH * sF;
+        if (pos.x >= x && pos.x <= x + w && pos.y >= y && pos.y <= y + h)
+        {
+            if (pos.x <= x + sideW * sF) durationPillMinusHover_ = i;
+            else if (pos.x >= x + w - sideW * sF) durationPillPlusHover_ = i;
+            else durationPillBodyHover = i;
+            break;
+        }
+    }
+
+    const float modeBtnX = 72.0f * sF, modeBtnY = 477.181f * sF;
+    const float modeBtnW = 70.0f * sF, modeBtnH = 18.0f * sF;
+    modeButtonHover_ = pos.x >= modeBtnX && pos.x <= modeBtnX + modeBtnW
+                   && pos.y >= modeBtnY && pos.y <= modeBtnY + modeBtnH;
+
+    const float csBtnX = 506.0f * sF, csBtnY = 477.181f * sF;
+    const float csBtnW = 70.0f * sF, csBtnH = 18.0f * sF;
+    clockSourceButtonHover_ = pos.x >= csBtnX && pos.x <= csBtnX + csBtnW
+                          && pos.y >= csBtnY && pos.y <= csBtnY + csBtnH;
+
+    bool overBtn = voiceMinusHoverTarget_ || voicePlusHoverTarget_
+                || durationPillMinusHover_ >= 0 || durationPillPlusHover_ >= 0;
+    bool overToggle = modeButtonHover_ || clockSourceButtonHover_ || keyframeHover_ >= 0;
     if (overBtn)
         setMouseCursor(juce::MouseCursor::PointingHandCursor);
-    else if (faderPillHover_ >= 0 || volumePillHover_ || velocityPillHover_)
+    else if (overToggle)
+        setMouseCursor(juce::MouseCursor::PointingHandCursor);
+    else if (faderPillHover_ >= 0 || volumePillHover_ || velocityPillHover_ || durationPillBodyHover >= 0)
         setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
     else
         setMouseCursor(juce::MouseCursor::NormalCursor);
@@ -153,6 +203,11 @@ void QuirkAudioProcessorEditor::mouseExit(const juce::MouseEvent& e)
         faderPillHover_ = -1;
         volumePillHover_ = false;
         velocityPillHover_ = false;
+        keyframeHover_ = -1;
+        modeButtonHover_ = false;
+        clockSourceButtonHover_ = false;
+        durationPillMinusHover_ = -1;
+        durationPillPlusHover_ = -1;
         setMouseCursor(juce::MouseCursor::NormalCursor);
     }
 }
@@ -207,6 +262,48 @@ void QuirkAudioProcessorEditor::timerCallback()
         voicePlusClickProgress_ *= 0.82f;
         hoverDirty = true;
     }
+
+    animateFloat(modeButtonHoverProgress_, modeButtonHover_);
+    animateFloat(clockSourceButtonHoverProgress_, clockSourceButtonHover_);
+    if (modeButtonClickProgress_ > 0.002f) { modeButtonClickProgress_ *= 0.82f; hoverDirty = true; }
+    if (clockSourceButtonClickProgress_ > 0.002f) { clockSourceButtonClickProgress_ *= 0.82f; hoverDirty = true; }
+
+    for (int i = 0; i < 4; ++i)
+    {
+        animateFloat(keyframeHoverProgress_[i], keyframeHover_ == i);
+        if (keyframeClickProgress_[i] > 0.002f) { keyframeClickProgress_[i] *= 0.82f; hoverDirty = true; }
+    }
+    for (int i = 0; i < 4; ++i)
+    {
+        animateFloat(durationPillMinusHoverProgress_[i], durationPillMinusHover_ == i);
+        animateFloat(durationPillPlusHoverProgress_[i],  durationPillPlusHover_  == i);
+        if (durationPillMinusClickProgress_[i] > 0.002f) { durationPillMinusClickProgress_[i] *= 0.82f; hoverDirty = true; }
+        if (durationPillPlusClickProgress_[i]  > 0.002f) { durationPillPlusClickProgress_[i]  *= 0.82f; hoverDirty = true; }
+    }
+
+    auto& engine = processorRef.getAnimationEngine();
+    const bool nowAnimated  = engine.getAnimatedMode();
+    const bool nowHostClock = engine.getHostClock();
+    const int  nowSelected  = engine.getSelectedKeyframe();
+    if (nowAnimated != lastAnimatedMode_ || nowHostClock != lastHostClock_ || nowSelected != lastSelectedKeyframe_)
+    {
+        lastAnimatedMode_      = nowAnimated;
+        lastHostClock_         = nowHostClock;
+        lastSelectedKeyframe_  = nowSelected;
+        hoverDirty = true;
+    }
+
+    const bool userInteracting = volumeSlider.isMouseButtonDown()
+                              || attackSlider.isMouseButtonDown()
+                              || decaySlider.isMouseButtonDown()
+                              || sustainSlider.isMouseButtonDown()
+                              || releaseSlider.isMouseButtonDown()
+                              || velocitySlider.isMouseButtonDown()
+                              || pillDragSlider_ != nullptr
+                              || dragging_;
+    if (userInteracting && !engine.isPlaying())
+        processorRef.captureCurrentToSelectedKeyframe();
+
     if (hoverDirty) repaint();
 
     updateSnapAnimation(volumeSlider, volumeAnim);
@@ -272,16 +369,16 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
         {
             float logoAspect = static_cast<float>(quirkLogoImage.getWidth())
                              / static_cast<float>(quirkLogoImage.getHeight());
-            float logoX = 38.7462f * scaleF;
-            float logoY = 117.5f * scaleF;
-            float logoW = 97.0f * scaleF;
-            float logoH = 45.0f * scaleF;
+            float logoX = 40.7462f * scaleF;
+            float logoY = 119.5f * scaleF;
+            float logoW = 115.0f * scaleF;
+            float logoH = 67.0f * scaleF;
             float drawH = logoW / logoAspect;
             float drawY = logoY + (logoH - drawH) * 0.5f;
 
             juce::AffineTransform logoTransform =
                 juce::AffineTransform::rotation(
-                    juce::degreesToRadians(-11.8205f),
+                    juce::degreesToRadians(-6.7317f),
                     logoX + logoW * 0.5f,
                     logoY + logoH * 0.5f);
 
@@ -292,8 +389,8 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
                         juce::Rectangle<float>(logoX, drawY, logoW, drawH));
             g.restoreState();
 
-            float stX = 79.2462f * scaleF;
-            float stY = 155.5f * scaleF;
+            float stX = 86.2462f * scaleF;
+            float stY = 174.5f * scaleF;
             float stW = 88.0f * scaleF;
             float stFontSize = 10.0f * scaleF;
             float stSpacing = 2.0f * scaleF;
@@ -302,7 +399,7 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
             g.setFont(stFont);
 
             juce::StringArray stLines;
-            stLines.add("WAVESHAPING");
+            stLines.add("WAVESCANNING");
             stLines.add("POLYSYNTH");
             float stLineH = stFontSize * 1.2f;
             for (int li = 0; li < stLines.size(); ++li)
@@ -456,22 +553,22 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
         g.setFont(faderLabelFont);
 
         struct { const char* label; float x; } faderLabels[4] = {
-            { "ATTACK",  220.75f },
-            { "DECAY",   290.75f },
-            { "SUSTAIN", 360.75f },
-            { "RELEASE", 433.75f },
+            { "ATTACK",  189.75f },
+            { "DECAY",   259.75f },
+            { "SUSTAIN", 329.75f },
+            { "RELEASE", 402.75f },
         };
 
         for (auto& fl : faderLabels)
         {
             g.drawText(fl.label,
-                       juce::Rectangle<float>(fl.x * scaleF, 263.819f * scaleF,
+                       juce::Rectangle<float>(fl.x * scaleF, 265.0f * scaleF,
                                               80.0f * scaleF, 17.0f * scaleF),
                        juce::Justification::centred);
         }
 
         juce::Slider* faderSliders[4] = { &attackSlider, &decaySlider, &sustainSlider, &releaseSlider };
-        float faderValueXs[4] = { 230.75f, 300.75f, 370.75f, 440.75f };
+        float faderValueXs[4] = { 199.75f, 269.75f, 339.75f, 409.75f };
 
         for (int i = 0; i < 4; ++i)
         {
@@ -480,7 +577,7 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
             auto pillColour = KnobDesign::accentColour
                 .interpolatedWith(KnobDesign::accentHoverColour, hp);
 
-            juce::Rectangle<float> valueRect(faderValueXs[i] * scaleF, 416.974f * scaleF,
+            juce::Rectangle<float> valueRect(faderValueXs[i] * scaleF, 418.155f * scaleF,
                                               60.0f * scaleF, 22.0f * scaleF);
             g.setColour(pillColour);
             g.fillRoundedRectangle(valueRect, 11.0f * scaleF);
@@ -505,7 +602,7 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
             auto volPillColour = KnobDesign::accentColour
                 .interpolatedWith(KnobDesign::accentHoverColour, vhp);
 
-            juce::Rectangle<float> volRect(95.86f * scaleF, 415.5f * scaleF,
+            juce::Rectangle<float> volRect(76.86f * scaleF, 416.681f * scaleF,
                                             60.28f * scaleF, 21.5f * scaleF);
             g.setColour(volPillColour);
             g.fillRoundedRectangle(volRect, 10.75f * scaleF);
@@ -522,12 +619,12 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
         g.setFont(conjusLAF.getBoldFont(14.0f * scaleF)
             .withExtraKerningFactor(1.0f / (14.0f * scaleF)));
         g.drawText("VOICES",
-                   juce::Rectangle<float>(527.0f * scaleF, 264.0f * scaleF,
+                   juce::Rectangle<float>(509.0f * scaleF, 266.181f * scaleF,
                                           60.0f * scaleF, 14.0f * scaleF),
                    juce::Justification::centred);
 
-        float pillX = 527.0f * scaleF;
-        float pillY = 286.0f * scaleF;
+        float pillX = 508.0f * scaleF;
+        float pillY = 287.181f * scaleF;
         float pillW = 60.0f * scaleF;
         float pillH = 22.0f * scaleF;
 
@@ -564,27 +661,27 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
         g.setColour(KnobDesign::bgColour);
         g.setFont(conjusLAF.getBoldFont(minusFontSize));
         g.drawText("-",
-                   juce::Rectangle<float>(529.0f * scaleF, pillY,
+                   juce::Rectangle<float>(510.0f * scaleF, pillY,
                                           16.0f * scaleF, pillH),
                    juce::Justification::centred);
 
         g.setFont(conjusLAF.getBoldFont(16.0f * scaleF));
         g.drawText(juce::String(voiceCount),
-                   juce::Rectangle<float>(545.0f * scaleF, pillY,
+                   juce::Rectangle<float>(526.0f * scaleF, pillY,
                                           24.0f * scaleF, pillH),
                    juce::Justification::centred);
 
         float plusFontSize = 20.0f * scaleF * (1.0f - 0.3f * voicePlusClickProgress_);
         g.setFont(conjusLAF.getBoldFont(plusFontSize));
         g.drawText("+",
-                   juce::Rectangle<float>(569.0f * scaleF, pillY,
+                   juce::Rectangle<float>(550.0f * scaleF, pillY,
                                           16.0f * scaleF, pillH),
                    juce::Justification::centred);
     }
 
     {
-        float velKnobX = 540.0f * scaleF;
-        float velKnobY = 361.0f * scaleF;
+        float velKnobX = 521.0f * scaleF;
+        float velKnobY = 362.181f * scaleF;
         float velKnobW = 35.0f * scaleF;
         float velRadius = velKnobW * 0.5f;
         float velCx = velKnobX + velRadius;
@@ -679,14 +776,14 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
         g.setFont(conjusLAF.getBoldFont(velLabelFont)
             .withExtraKerningFactor(1.0f / velLabelFont));
         g.drawText("VELOCITY",
-                   juce::Rectangle<float>(523.0f * scaleF, 323.568f * scaleF,
+                   juce::Rectangle<float>(504.0f * scaleF, 324.749f * scaleF,
                                           68.0f * scaleF, 12.0f * scaleF),
                    juce::Justification::centred);
 
         auto velPillColour = KnobDesign::accentColour.interpolatedWith(
             KnobDesign::accentHoverColour, velHover);
-        juce::Rectangle<float> velPillRect(534.7784347389604f * scaleF,
-                                            409.3974433495965f * scaleF,
+        juce::Rectangle<float> velPillRect(515.778f * scaleF,
+                                            410.578f * scaleF,
                                             46.0f * scaleF, 13.0f * scaleF);
         g.setColour(velPillColour);
         g.fillRoundedRectangle(velPillRect, 6.5f * scaleF);
@@ -695,6 +792,285 @@ void QuirkAudioProcessorEditor::paint(juce::Graphics& g)
         g.setColour(KnobDesign::bgColour);
         g.setFont(conjusLAF.getBoldFont(9.0f * scaleF));
         g.drawText(velPillText, velPillRect, juce::Justification::centred);
+    }
+
+    drawKeyframeRow(g, scaleF);
+}
+
+static juce::String formatHostDivision(HostDivision d)
+{
+    switch (d)
+    {
+        case HostDivision::Div1_32:  return "1/32";
+        case HostDivision::Div1_16:  return "1/16";
+        case HostDivision::Div1_8:   return "1/8";
+        case HostDivision::Div1_4:   return "1/4";
+        case HostDivision::Div1_2:   return "1/2";
+        case HostDivision::Div1_1:   return "1/1";
+        case HostDivision::Div1_8d:  return "1/8d";
+        case HostDivision::Div1_4d:  return "1/4d";
+        case HostDivision::Div1_2d:  return "1/2d";
+        case HostDivision::Div1_16t: return "1/16t";
+        case HostDivision::Div1_8t:  return "1/8t";
+        case HostDivision::Div1_4t:  return "1/4t";
+        case HostDivision::Div1_2t:  return "1/2t";
+        default:                     return "1/4";
+    }
+}
+
+static juce::String formatInternalMs(float ms)
+{
+    if (ms >= 1000.0f)
+        return juce::String(ms / 1000.0f, ms >= 10000.0f ? 1 : 2) + "s";
+    return juce::String(static_cast<int>(std::round(ms))) + "ms";
+}
+
+void QuirkAudioProcessorEditor::drawKeyframeRow(juce::Graphics& g, float scaleF)
+{
+    auto& engine = processorRef.getAnimationEngine();
+    const bool animatedMode = engine.getAnimatedMode();
+    const bool hostClock    = engine.getHostClock();
+    const int  selected     = engine.getSelectedKeyframe();
+
+    const float kfX[4]      = { 166.75f, 266.75f, 366.75f, 466.75f };
+    const float transX[3]   = { 190.75f, 290.75f, 390.75f };
+    const float pillX[3]    = { 206.75f, 306.75f, 406.75f };
+    const float kfY = 465.181f, kfSize = 24.0f;
+    const float transY = 476.181f, transW = 76.0f, transH = 2.0f;
+    const float pillY = 470.181f, pillW = 44.0f, pillH = 14.0f;
+
+    const float loopBottomY = 508.181f;
+    const float loopPillX = 306.75f;
+    const float loopPillY = loopBottomY - pillH * 0.5f;
+    const float loopCornerR = 4.0f;
+
+    for (int i = 0; i < 3; ++i)
+    {
+        g.setColour(juce::Colour(0xff8a5500));
+        g.fillRect(transX[i] * scaleF, transY * scaleF, transW * scaleF, transH * scaleF);
+    }
+
+    {
+        const float dBotX  = (kfX[3] + kfSize * 0.5f) * scaleF;
+        const float aBotX  = (kfX[0] + kfSize * 0.5f) * scaleF;
+        const float kfBotY = (kfY + kfSize) * scaleF;
+        const float botY   = loopBottomY * scaleF;
+        const float cr     = loopCornerR * scaleF;
+        juce::Path loop;
+        loop.startNewSubPath(dBotX, kfBotY);
+        loop.lineTo(dBotX, botY - cr);
+        loop.quadraticTo(dBotX, botY, dBotX - cr, botY);
+        loop.lineTo(aBotX + cr, botY);
+        loop.quadraticTo(aBotX, botY, aBotX, botY - cr);
+        loop.lineTo(aBotX, kfBotY);
+        g.setColour(juce::Colour(0xff8a5500));
+        g.strokePath(loop, juce::PathStrokeType(transH * scaleF));
+    }
+
+    for (int i = 0; i < 4; ++i)
+    {
+        const float x = kfX[i] * scaleF;
+        const float y = kfY * scaleF;
+        const float s = kfSize * scaleF;
+        const float strokeRef = 73.28f * scaleF;
+        const float strokeW = strokeRef * KnobDesign::knobStrokeFrac * 0.7f;
+
+        const bool isSelected = (i == selected);
+        const bool isStaticDim = (!animatedMode && i != 0);
+        const float hover = keyframeHoverProgress_[i];
+        const float clickP = keyframeClickProgress_[i];
+        const float shrink = clickP * 0.06f;
+        const float drawX = x + s * shrink;
+        const float drawY = y + s * shrink;
+        const float drawS = s - 2.0f * s * shrink;
+
+        juce::Colour fillC, textC, borderC;
+        if (isSelected)
+        {
+            fillC = KnobDesign::accentColour.interpolatedWith(KnobDesign::accentHoverColour, hover);
+            textC = KnobDesign::bgColour;
+            borderC = fillC;
+        }
+        else if (isStaticDim)
+        {
+            fillC = KnobDesign::bgColour;
+            textC = juce::Colour(0xff6a4200);
+            borderC = juce::Colour(0xff6a4200);
+        }
+        else
+        {
+            fillC = KnobDesign::bgColour;
+            textC = KnobDesign::accentColour.interpolatedWith(KnobDesign::accentHoverColour, hover);
+            borderC = textC;
+        }
+
+        g.setColour(fillC);
+        g.fillEllipse(drawX, drawY, drawS, drawS);
+        g.setColour(borderC);
+        g.drawEllipse(drawX + strokeW * 0.5f, drawY + strokeW * 0.5f,
+                      drawS - strokeW, drawS - strokeW, strokeW);
+
+        const float letterFontSize = 13.0f * scaleF * (1.0f - 0.2f * clickP);
+        g.setColour(textC);
+        g.setFont(conjusLAF.getBoldFont(letterFontSize));
+        static const char* keyframeLabels[4] = { "A", "B", "C", "D" };
+        g.drawText(keyframeLabels[i],
+                   juce::Rectangle<float>(drawX, drawY, drawS, drawS),
+                   juce::Justification::centred);
+    }
+
+    for (int i = 0; i < 4; ++i)
+    {
+        float px, py;
+        if (i < 3) { px = pillX[i] * scaleF; py = pillY * scaleF; }
+        else       { px = loopPillX * scaleF; py = loopPillY * scaleF; }
+        const float pw = pillW * scaleF;
+        const float ph = pillH * scaleF;
+
+        g.setColour(KnobDesign::accentColour);
+        g.fillRoundedRectangle(px, py, pw, ph, ph * 0.5f);
+
+        juce::Path pillPath;
+        pillPath.addRoundedRectangle(px, py, pw, ph, ph * 0.5f);
+
+        const float sideW = 10.0f * scaleF;
+        if (durationPillMinusHoverProgress_[i] > 0.001f)
+        {
+            g.saveState();
+            g.reduceClipRegion(pillPath);
+            g.setColour(KnobDesign::accentColour.interpolatedWith(
+                KnobDesign::accentHoverColour, durationPillMinusHoverProgress_[i]));
+            g.fillRect(px, py, sideW, ph);
+            g.restoreState();
+        }
+        if (durationPillPlusHoverProgress_[i] > 0.001f)
+        {
+            g.saveState();
+            g.reduceClipRegion(pillPath);
+            g.setColour(KnobDesign::accentColour.interpolatedWith(
+                KnobDesign::accentHoverColour, durationPillPlusHoverProgress_[i]));
+            g.fillRect(px + pw - sideW, py, sideW, ph);
+            g.restoreState();
+        }
+
+        const juce::String label = hostClock
+            ? formatHostDivision(engine.getHostDuration(i))
+            : formatInternalMs(engine.getInternalDuration(i));
+
+        const float minusFontSize = 11.0f * scaleF * (1.0f - 0.3f * durationPillMinusClickProgress_[i]);
+        const float plusFontSize  = 11.0f * scaleF * (1.0f - 0.3f * durationPillPlusClickProgress_[i]);
+
+        g.setColour(KnobDesign::bgColour);
+        g.setFont(conjusLAF.getBoldFont(minusFontSize));
+        g.drawText("-",
+                   juce::Rectangle<float>(px, py, sideW, ph),
+                   juce::Justification::centred);
+
+        g.setFont(conjusLAF.getBoldFont(12.0f * scaleF));
+        g.drawText(label,
+                   juce::Rectangle<float>(px + sideW, py, pw - 2.0f * sideW, ph),
+                   juce::Justification::centred);
+
+        g.setFont(conjusLAF.getBoldFont(plusFontSize));
+        g.drawText("+",
+                   juce::Rectangle<float>(px + pw - sideW, py, sideW, ph),
+                   juce::Justification::centred);
+    }
+
+    {
+        const float bx = 72.0f  * scaleF, by = 477.181f * scaleF;
+        const float bw = 70.0f  * scaleF, bh = 18.0f * scaleF;
+        const float ly = 465.181f * scaleF, lh = 10.0f * scaleF;
+        const float clickShrink = modeButtonClickProgress_ * 0.06f;
+        const float dbx = bx + bw * clickShrink;
+        const float dby = by + bh * clickShrink * 1.5f;
+        const float dbw = bw - 2.0f * bw * clickShrink;
+        const float dbh = bh - 2.0f * bh * clickShrink * 1.5f;
+
+        const float labelCenterX = bx + bw * 0.5f;
+        const float labelDrawW = 100.0f * scaleF;
+        const float modeLabelFont = 9.0f * scaleF;
+        g.setColour(KnobDesign::accentColour);
+        g.setFont(conjusLAF.getBoldFont(modeLabelFont).withExtraKerningFactor(1.0f / modeLabelFont));
+        g.drawText("MODE",
+                   juce::Rectangle<float>(labelCenterX - labelDrawW * 0.5f, ly, labelDrawW, lh),
+                   juce::Justification::centred);
+
+        const juce::Colour interactiveAccent = KnobDesign::accentColour.interpolatedWith(
+            KnobDesign::accentHoverColour, modeButtonHoverProgress_);
+        const juce::Colour fill = animatedMode
+            ? interactiveAccent
+            : KnobDesign::bgColour;
+        const juce::Colour textC = animatedMode
+            ? KnobDesign::bgColour
+            : interactiveAccent;
+        const juce::Colour borderC = interactiveAccent;
+        const float strokeRef = 73.28f * scaleF;
+        const float borderW = strokeRef * KnobDesign::knobStrokeFrac * 0.7f;
+
+        g.setColour(fill);
+        g.fillRoundedRectangle(dbx, dby, dbw, dbh, dbh * 0.5f);
+        if (!animatedMode)
+        {
+            g.setColour(borderC);
+            g.drawRoundedRectangle(dbx + borderW * 0.5f, dby + borderW * 0.5f,
+                                   dbw - borderW, dbh - borderW,
+                                   dbh * 0.5f, borderW);
+        }
+
+        g.setColour(textC);
+        g.setFont(conjusLAF.getBoldFont(9.0f * scaleF).withExtraKerningFactor(1.0f / (9.0f * scaleF) * 0.5f));
+        g.drawText(animatedMode ? "WAVESCAN" : "STATIC",
+                   juce::Rectangle<float>(dbx, dby, dbw, dbh),
+                   juce::Justification::centred);
+    }
+
+    {
+        const float bx = 506.0f * scaleF, by = 477.181f * scaleF;
+        const float bw = 70.0f  * scaleF, bh = 18.0f * scaleF;
+        const float ly = 464.181f * scaleF, lh = 10.0f * scaleF;
+        const float clickShrink = clockSourceButtonClickProgress_ * 0.06f;
+        const float dbx = bx + bw * clickShrink;
+        const float dby = by + bh * clickShrink * 1.5f;
+        const float dbw = bw - 2.0f * bw * clickShrink;
+        const float dbh = bh - 2.0f * bh * clickShrink * 1.5f;
+
+        const float labelCenterX = bx + bw * 0.5f;
+        const float labelDrawW = 100.0f * scaleF;
+        const float csLabelFont = 8.5f * scaleF;
+        g.setColour(KnobDesign::accentColour);
+        g.setFont(conjusLAF.getBoldFont(csLabelFont).withExtraKerningFactor(1.0f / csLabelFont));
+        g.drawText("CLOCK SOURCE",
+                   juce::Rectangle<float>(labelCenterX - labelDrawW * 0.5f, ly, labelDrawW, lh),
+                   juce::Justification::centred);
+
+        const juce::Colour interactiveAccent = KnobDesign::accentColour.interpolatedWith(
+            KnobDesign::accentHoverColour, clockSourceButtonHoverProgress_);
+        const juce::Colour fill = (!hostClock)
+            ? interactiveAccent
+            : KnobDesign::bgColour;
+        const juce::Colour textC = (!hostClock)
+            ? KnobDesign::bgColour
+            : interactiveAccent;
+        const juce::Colour borderC = interactiveAccent;
+        const float strokeRef = 73.28f * scaleF;
+        const float borderW = strokeRef * KnobDesign::knobStrokeFrac * 0.7f;
+
+        g.setColour(fill);
+        g.fillRoundedRectangle(dbx, dby, dbw, dbh, dbh * 0.5f);
+        if (hostClock)
+        {
+            g.setColour(borderC);
+            g.drawRoundedRectangle(dbx + borderW * 0.5f, dby + borderW * 0.5f,
+                                   dbw - borderW, dbh - borderW,
+                                   dbh * 0.5f, borderW);
+        }
+
+        g.setColour(textC);
+        g.setFont(conjusLAF.getBoldFont(9.0f * scaleF).withExtraKerningFactor(1.0f / (9.0f * scaleF) * 0.5f));
+        g.drawText(hostClock ? "HOST" : "INTERNAL",
+                   juce::Rectangle<float>(dbx, dby, dbw, dbh),
+                   juce::Justification::centred);
     }
 }
 
@@ -747,10 +1123,10 @@ void QuirkAudioProcessorEditor::resized()
 
     float knobColW = w * 0.2088f;
     float halfCol = knobColW * 0.5f;
-    float knobColX = w * (127.666f / 650.0f) - halfCol;
+    float knobColX = w * (108.666f / 650.0f) - halfCol;
 
     volumeLabel.setFont(conjusLAF.getBoldFont(14.0f * sF));
-    volumeLabel.setBounds(static_cast<int>(91.0f * sF), static_cast<int>(264.85f * sF),
+    volumeLabel.setBounds(static_cast<int>(72.0f * sF), static_cast<int>(266.031f * sF),
                           static_cast<int>(72.0f * sF), static_cast<int>(16.0f * sF));
 
     int sliderBottom = static_cast<int>(h * 0.918f);
@@ -776,8 +1152,8 @@ void QuirkAudioProcessorEditor::resized()
     {
         const float faderTrackH = 120.0f;
         const float faderCapW = 28.0f;
-        const float faderTrackXs[4] = { 247.75f, 317.75f, 387.75f, 457.75f };
-        const float faderTrackY = 287.474f;
+        const float faderTrackXs[4] = { 216.75f, 286.75f, 356.75f, 426.75f };
+        const float faderTrackY = 288.655f;
 
         juce::Slider* faderSliders[4] = { &attackSlider, &decaySlider, &sustainSlider, &releaseSlider };
 
@@ -796,8 +1172,8 @@ void QuirkAudioProcessorEditor::resized()
     }
 
     {
-        float velX = 540.0f * sF;
-        float velY = 361.0f * sF;
+        float velX = 521.0f * sF;
+        float velY = 362.181f * sF;
         float velSize = 35.0f * sF;
         velocitySlider.setMouseDragSensitivity(static_cast<int>(w * 0.5f));
         velocitySlider.setBounds(static_cast<int>(velX), static_cast<int>(velY),
@@ -954,8 +1330,8 @@ void QuirkAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
 
     {
         float sF = static_cast<float>(getWidth()) / static_cast<float>(KnobDesign::defaultWidth);
-        float pillX = 527.0f * sF;
-        float pillY = 286.0f * sF;
+        float pillX = 508.0f * sF;
+        float pillY = 287.181f * sF;
         float pillW = 60.0f * sF;
         float pillH = 22.0f * sF;
 
@@ -984,12 +1360,12 @@ void QuirkAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
 
     {
         float sF2 = static_cast<float>(getWidth()) / static_cast<float>(KnobDesign::defaultWidth);
-        float faderPillXs[4] = { 230.75f, 300.75f, 370.75f, 440.75f };
+        float faderPillXs[4] = { 199.75f, 269.75f, 339.75f, 409.75f };
         juce::Slider* faderSliders[4] = { &attackSlider, &decaySlider, &sustainSlider, &releaseSlider };
         for (int i = 0; i < 4; ++i)
         {
             float px = faderPillXs[i] * sF2;
-            float py = 416.974f * sF2;
+            float py = 418.155f * sF2;
             if (mx >= px && mx <= px + 60.0f * sF2 && my >= py && my <= py + 22.0f * sF2)
             {
                 pillDragSlider_ = faderSliders[i];
@@ -1000,7 +1376,7 @@ void QuirkAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
             }
         }
 
-        float volPx = 95.86f * sF2, volPy = 415.5f * sF2;
+        float volPx = 76.86f * sF2, volPy = 416.681f * sF2;
         if (mx >= volPx && mx <= volPx + 60.28f * sF2 && my >= volPy && my <= volPy + 21.5f * sF2)
         {
             pillDragSlider_ = &volumeSlider;
@@ -1010,13 +1386,109 @@ void QuirkAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
             return;
         }
 
-        float velPx = 534.7784347389604f * sF2, velPy = 409.3974433495965f * sF2;
+        float velPx = 515.778f * sF2, velPy = 410.578f * sF2;
         if (mx >= velPx && mx <= velPx + 46.0f * sF2 && my >= velPy && my <= velPy + 13.0f * sF2)
         {
             pillDragSlider_ = &velocitySlider;
             pillDragStartY_ = my;
             pillDragStartValue_ = velocitySlider.getValue();
             pillDragSensitivity_ = static_cast<float>(getWidth()) * 0.5f;
+            return;
+        }
+
+        const float kfX[4] = { 166.75f, 266.75f, 366.75f, 466.75f };
+        for (int i = 0; i < 4; ++i)
+        {
+            const float kx = kfX[i] * sF2;
+            const float ky = 465.181f * sF2;
+            const float ks = 24.0f * sF2;
+            if (mx >= kx && mx <= kx + ks && my >= ky && my <= ky + ks)
+            {
+                keyframeClickProgress_[i] = 1.0f;
+                processorRef.getAnimationEngine().selectKeyframe(i);
+                processorRef.loadSelectedKeyframeIntoApvts();
+                repaint();
+                return;
+            }
+        }
+
+        const float pillXs[4] = { 206.75f, 306.75f, 406.75f, 306.75f };
+        const float pillYs[4] = { 470.181f, 470.181f, 470.181f, 501.181f };
+        const float dpW = 44.0f, dpH = 14.0f, sideW = 10.0f;
+        for (int i = 0; i < 4; ++i)
+        {
+            const float px = pillXs[i] * sF2;
+            const float py = pillYs[i] * sF2;
+            const float pw = dpW * sF2;
+            const float ph = dpH * sF2;
+            if (mx >= px && mx <= px + pw && my >= py && my <= py + ph)
+            {
+                auto& engine = processorRef.getAnimationEngine();
+                const bool host = engine.getHostClock();
+                if (mx <= px + sideW * sF2)
+                {
+                    durationPillMinusClickProgress_[i] = 1.0f;
+                    if (host)
+                    {
+                        int idx = static_cast<int>(engine.getHostDuration(i));
+                        if (idx > 0) engine.setHostDuration(i, static_cast<HostDivision>(idx - 1));
+                    }
+                    else
+                    {
+                        float v = engine.getInternalDuration(i);
+                        engine.setInternalDuration(i, juce::jmax(50.0f, v - 100.0f));
+                    }
+                    repaint();
+                }
+                else if (mx >= px + pw - sideW * sF2)
+                {
+                    durationPillPlusClickProgress_[i] = 1.0f;
+                    if (host)
+                    {
+                        int idx = static_cast<int>(engine.getHostDuration(i));
+                        if (idx < static_cast<int>(HostDivision::NumDivisions) - 1)
+                            engine.setHostDuration(i, static_cast<HostDivision>(idx + 1));
+                    }
+                    else
+                    {
+                        float v = engine.getInternalDuration(i);
+                        engine.setInternalDuration(i, juce::jmin(60000.0f, v + 100.0f));
+                    }
+                    repaint();
+                }
+                else
+                {
+                    durationDragTransition_ = i;
+                    durationDragStartY_ = my;
+                    durationDragStartMs_ = engine.getInternalDuration(i);
+                    durationDragStartHostDiv_ = static_cast<int>(engine.getHostDuration(i));
+                }
+                return;
+            }
+        }
+
+        const float modeBtnX = 72.0f * sF2, modeBtnY = 477.181f * sF2;
+        const float modeBtnW = 70.0f * sF2, modeBtnH = 18.0f * sF2;
+        if (mx >= modeBtnX && mx <= modeBtnX + modeBtnW && my >= modeBtnY && my <= modeBtnY + modeBtnH)
+        {
+            modeButtonClickProgress_ = 1.0f;
+            auto& engine = processorRef.getAnimationEngine();
+            const bool newMode = !engine.getAnimatedMode();
+            engine.setAnimatedMode(newMode);
+            if (!newMode)
+                processorRef.loadSelectedKeyframeIntoApvts();
+            repaint();
+            return;
+        }
+
+        const float csBtnX = 506.0f * sF2, csBtnY = 477.181f * sF2;
+        const float csBtnW = 70.0f * sF2, csBtnH = 18.0f * sF2;
+        if (mx >= csBtnX && mx <= csBtnX + csBtnW && my >= csBtnY && my <= csBtnY + csBtnH)
+        {
+            clockSourceButtonClickProgress_ = 1.0f;
+            auto& engine = processorRef.getAnimationEngine();
+            engine.setHostClock(!engine.getHostClock());
+            repaint();
             return;
         }
     }
@@ -1089,6 +1561,30 @@ void QuirkAudioProcessorEditor::mouseDrag(const juce::MouseEvent& e)
         return;
     }
 
+    if (durationDragTransition_ >= 0)
+    {
+        float my = static_cast<float>(e.getPosition().y);
+        float deltaY = durationDragStartY_ - my;
+        auto& engine = processorRef.getAnimationEngine();
+        if (engine.getHostClock())
+        {
+            int stepDelta = static_cast<int>(std::round(deltaY / 12.0f));
+            int newIdx = juce::jlimit(0,
+                                      static_cast<int>(HostDivision::NumDivisions) - 1,
+                                      durationDragStartHostDiv_ + stepDelta);
+            engine.setHostDuration(durationDragTransition_, static_cast<HostDivision>(newIdx));
+        }
+        else
+        {
+            float msPerPixel = 20.0f;
+            float newMs = juce::jlimit(50.0f, 60000.0f,
+                                       durationDragStartMs_ + deltaY * msPerPixel);
+            engine.setInternalDuration(durationDragTransition_, newMs);
+        }
+        repaint();
+        return;
+    }
+
     if (!dragging_) return;
 
     float mx = static_cast<float>(e.getPosition().x);
@@ -1146,6 +1642,11 @@ void QuirkAudioProcessorEditor::mouseUp(const juce::MouseEvent&)
         pillDragSlider_ = nullptr;
         return;
     }
+    if (durationDragTransition_ >= 0)
+    {
+        durationDragTransition_ = -1;
+        return;
+    }
     if (dragging_)
         endGestures();
     dragging_ = false;
@@ -1169,7 +1670,9 @@ void QuirkAudioProcessorEditor::mouseDoubleClick(const juce::MouseEvent& e)
         int slot = vals.curvePointToSlot(hit.pointIndex);
         if (slot >= 0)
         {
-            setParam(prefix + "p" + juce::String(slot) + "_on", 0.0f);
+            const auto onId = prefix + "p" + juce::String(slot) + "_on";
+            setParam(onId, 0.0f);
+            processorRef.setKeyframeParamForAllFrames(onId, 0.0f);
             processorRef.updateDisplayCurves();
             repaint(graphBounds);
         }
@@ -1191,13 +1694,21 @@ void QuirkAudioProcessorEditor::mouseDoubleClick(const juce::MouseEvent& e)
 
     auto s = juce::String(slot);
     float defDx = std::min(absBx, 1.0f - absBx) / 3.0f;
-    setParam(prefix + "p" + s + "_on", 1.0f);
-    setParam(prefix + "p" + s + "_x", absBx);
-    setParam(prefix + "p" + s + "_y", absby);
-    setParam(prefix + "p" + s + "_idx", -defDx);
-    setParam(prefix + "p" + s + "_idy", 0.0f);
-    setParam(prefix + "p" + s + "_odx", defDx);
-    setParam(prefix + "p" + s + "_ody", 0.0f);
+    const juce::String pids[7] = {
+        prefix + "p" + s + "_on",
+        prefix + "p" + s + "_x",
+        prefix + "p" + s + "_y",
+        prefix + "p" + s + "_idx",
+        prefix + "p" + s + "_idy",
+        prefix + "p" + s + "_odx",
+        prefix + "p" + s + "_ody",
+    };
+    const float vals[7] = { 1.0f, absBx, absby, -defDx, 0.0f, defDx, 0.0f };
+    for (int i = 0; i < 7; ++i)
+    {
+        setParam(pids[i], vals[i]);
+        processorRef.setKeyframeParamForAllFrames(pids[i], vals[i]);
+    }
     processorRef.updateDisplayCurves();
     repaint(graphBounds);
 }
@@ -1208,12 +1719,12 @@ void QuirkAudioProcessorEditor::mouseWheelMove(const juce::MouseEvent& e,
     auto pos = getLocalPoint(e.eventComponent, e.getPosition());
     float sF = static_cast<float>(getWidth()) / static_cast<float>(KnobDesign::defaultWidth);
 
-    float faderPillXs[4] = { 230.75f, 300.75f, 370.75f, 440.75f };
+    float faderPillXs[4] = { 199.75f, 269.75f, 339.75f, 409.75f };
     juce::Slider* faderSliders[4] = { &attackSlider, &decaySlider, &sustainSlider, &releaseSlider };
     for (int i = 0; i < 4; ++i)
     {
         float px = faderPillXs[i] * sF;
-        float py = 416.974f * sF;
+        float py = 418.155f * sF;
         if (pos.x >= px && pos.x <= px + 60.0f * sF
             && pos.y >= py && pos.y <= py + 22.0f * sF)
         {
@@ -1223,7 +1734,7 @@ void QuirkAudioProcessorEditor::mouseWheelMove(const juce::MouseEvent& e,
         }
     }
 
-    float volPx = 95.86f * sF, volPy = 415.5f * sF;
+    float volPx = 76.86f * sF, volPy = 416.681f * sF;
     if (pos.x >= volPx && pos.x <= volPx + 60.28f * sF
         && pos.y >= volPy && pos.y <= volPy + 21.5f * sF)
     {
@@ -1232,7 +1743,7 @@ void QuirkAudioProcessorEditor::mouseWheelMove(const juce::MouseEvent& e,
         return;
     }
 
-    float velPx = 534.7784347389604f * sF, velPy = 409.3974433495965f * sF;
+    float velPx = 515.778f * sF, velPy = 410.578f * sF;
     if (pos.x >= velPx && pos.x <= velPx + 46.0f * sF
         && pos.y >= velPy && pos.y <= velPy + 13.0f * sF)
     {

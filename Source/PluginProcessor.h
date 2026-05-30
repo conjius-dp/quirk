@@ -5,6 +5,7 @@
 #include "DSP/Oscillator.h"
 #include "DSP/BezierCurve.h"
 #include "DSP/VoiceAllocator.h"
+#include "DSP/AnimationEngine.h"
 #include "KnobDesign.h"
 
 class QuirkAudioProcessor : public juce::AudioProcessor
@@ -59,6 +60,15 @@ public:
     int findFreeSlot(const juce::String& prefix) const;
     void updateDisplayCurves();
 
+    AnimationEngine& getAnimationEngine() { return animationEngine_; }
+    void loadSelectedKeyframeIntoApvts();
+    void captureCurrentToSelectedKeyframe();
+    void initializeKeyframesFromCurrentParams();
+    void setKeyframeParamForAllFrames(const juce::String& paramId, float value);
+
+    static const char* getAnimatedParamId(int idx);
+    static int paramIdToIndex(const juce::String& paramId);
+
 private:
     juce::AudioProcessorValueTreeState apvts;
     Oscillator voices_[VoiceAlloc::kMaxVoices];
@@ -84,6 +94,11 @@ private:
     CurveParamListener curveParamListener_ { curveParamsDirty_ };
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    AnimationEngine animationEngine_;
+    AnimationEngine::AnimatedParams animScratch_{};
+    std::atomic<bool> animationWritingInProgress_ { false };
+    bool previouslyAnimating_ = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(QuirkAudioProcessor)
 };

@@ -8,6 +8,7 @@ add_subdirectory(JUCE)
 add_library(QuirkDSP STATIC
     Source/DSP/Oscillator.cpp
     Source/DSP/BezierCurve.cpp
+    Source/DSP/AnimationEngine.cpp
 )
 
 target_include_directories(QuirkDSP PUBLIC Source)
@@ -124,6 +125,7 @@ add_executable(QuirkTests
     Tests/TestBezierCurve.cpp
     Tests/TestADSREnvelope.cpp
     Tests/TestPolyVoices.cpp
+    Tests/TestAnimationEngine.cpp
 )
 
 target_include_directories(QuirkTests PRIVATE Source)

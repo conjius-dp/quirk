@@ -67,16 +67,7 @@ public:
         float tickEndR = r * (KnobDesign::tickGap + KnobDesign::tickLength);
         float dx = static_cast<float>(x) - cx;
         float dy = static_cast<float>(y) - cy;
-        if (dx * dx + dy * dy <= tickEndR * tickEndR) return true;
-
-        float textBoxH = sh * 0.25f;
-        int pillHalfW = static_cast<int>(sw * 0.30f);
-        int pillTop    = static_cast<int>(sh - textBoxH * 0.85f);
-        int pillBottom = static_cast<int>(sh - textBoxH * 0.05f);
-        return (x >= static_cast<int>(cx) - pillHalfW
-             && x <= static_cast<int>(cx) + pillHalfW
-             && y >= pillTop
-             && y <= pillBottom);
+        return dx * dx + dy * dy <= tickEndR * tickEndR;
     }
 };
 
@@ -144,6 +135,7 @@ private:
 
     void startSnapAnimation(juce::Slider& slider, SliderAnimation& anim, const juce::String& paramId);
     void updateSnapAnimation(juce::Slider& slider, SliderAnimation& anim);
+    void drawKeyframeRow(juce::Graphics& g, float scaleF);
 
     int lastCurveVersion = -1;
 
@@ -157,6 +149,34 @@ private:
     int faderPillHover_ = -1;
     bool volumePillHover_ = false;
     bool velocityPillHover_ = false;
+
+    int keyframeHover_ = -1;
+    float keyframeHoverProgress_[4] = {};
+    float keyframeClickProgress_[4] = {};
+
+    bool modeButtonHover_ = false;
+    float modeButtonHoverProgress_ = 0.0f;
+    float modeButtonClickProgress_ = 0.0f;
+
+    bool clockSourceButtonHover_ = false;
+    float clockSourceButtonHoverProgress_ = 0.0f;
+    float clockSourceButtonClickProgress_ = 0.0f;
+
+    int durationPillMinusHover_ = -1;
+    int durationPillPlusHover_  = -1;
+    float durationPillMinusHoverProgress_[4] = {};
+    float durationPillPlusHoverProgress_[4]  = {};
+    float durationPillMinusClickProgress_[4] = {};
+    float durationPillPlusClickProgress_[4]  = {};
+
+    int durationDragTransition_ = -1;
+    float durationDragStartY_ = 0.0f;
+    float durationDragStartMs_ = 0.0f;
+    int   durationDragStartHostDiv_ = 0;
+
+    bool lastAnimatedMode_ = true;
+    bool lastHostClock_ = false;
+    int lastSelectedKeyframe_ = 0;
 
     juce::Slider* pillDragSlider_ = nullptr;
     float pillDragStartY_ = 0.0f;

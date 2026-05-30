@@ -14,7 +14,6 @@
 
 <p align="center">
   <a href="https://github.com/conjius-dp/quirk/actions/workflows/ci.yml"><img src="https://github.com/conjius-dp/quirk/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/conjius-dp/quirk/actions/workflows/ci.yml"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fconjius-dp.github.io%2Fquirk%2Fcoverage.json" alt="Coverage"></a>
   <a href="https://github.com/conjius-dp/quirk/releases/latest"><img src="https://img.shields.io/github/v/release/conjius-dp/quirk?label=stable&color=brightgreen" alt="Stable"></a>
   <a href="https://github.com/conjius-dp/quirk/releases"><img src="https://img.shields.io/github/v/release/conjius-dp/quirk?include_prereleases&label=nightly" alt="Nightly"></a>
   <a href="https://github.com/conjius-dp/quirk/releases"><img src="https://img.shields.io/github/downloads/conjius-dp/quirk/total?label=downloads&color=blue" alt="Total downloads"></a>

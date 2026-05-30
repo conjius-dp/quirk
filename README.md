@@ -1,12 +1,35 @@
 # quirk
 
-Synth instrument with an editable bezier curve waveform. The curve defines the oscillator's waveshape directly. Double-click the graph to add control points, drag points and handles to reshape.
+<p align="center">
+  <picture><img src="https://conjius-dp.github.io/quirk/screenshot.png" width="373" alt="Quirk"></picture>
+</p>
 
-VST3 (macOS, Windows), AU + Standalone (macOS).
+<p align="center">
+  <a href="https://github.com/conjius-dp/quirk/releases/latest/download/Quirk-macOS-VST3.zip"><img src="Assets/badges/download-vst3-macos.png" height="32" alt="Download VST3 for macOS"></a>
+  &nbsp;
+  <a href="https://github.com/conjius-dp/quirk/releases/latest/download/Quirk-macOS-AU.zip"><img src="Assets/badges/download-au-macos.png" height="32" alt="Download AU for macOS"></a>
+  &nbsp;
+  <a href="https://github.com/conjius-dp/quirk/releases/latest/download/Quirk-Windows-VST3.zip"><img src="Assets/badges/download-vst3-windows.png" height="32" alt="Download VST3 for Windows"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/conjius-dp/quirk/actions/workflows/ci.yml"><img src="https://github.com/conjius-dp/quirk/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/conjius-dp/quirk/actions/workflows/ci.yml"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fconjius-dp.github.io%2Fquirk%2Fcoverage.json" alt="Coverage"></a>
+  <a href="https://github.com/conjius-dp/quirk/releases/latest"><img src="https://img.shields.io/github/v/release/conjius-dp/quirk?label=stable&color=brightgreen" alt="Stable"></a>
+  <a href="https://github.com/conjius-dp/quirk/releases"><img src="https://img.shields.io/github/v/release/conjius-dp/quirk?include_prereleases&label=nightly" alt="Nightly"></a>
+  <a href="https://github.com/conjius-dp/quirk/releases"><img src="https://img.shields.io/github/downloads/conjius-dp/quirk/total?label=downloads&color=blue" alt="Total downloads"></a>
+</p>
+
+Waveshaping polysynth with an editable bezier curve waveform. The curve defines the oscillator's waveshape directly. Double-click the graph to add control points, drag points and handles to reshape. Symmetric or asymmetric curve editing. Up to 10 voices with oldest-voice stealing.
+
+VST3 (macOS, Windows), AU + Standalone (macOS). Zero latency.
 
 ## Usage
 
 - **Graph**: double-click to add/remove points. Drag points and handles to reshape the waveform.
+- **Symmetric / Asymmetric**: mirror the curve or edit each half independently.
+- **ADSR**: attack, decay, sustain, release envelope per voice.
+- **Voices**: 1-10 polyphonic voices with oldest-voice stealing.
 - **Volume**: output level.
 - **Power button** (top-right): hard bypass.
 
@@ -15,6 +38,11 @@ VST3 (macOS, Windows), AU + Standalone (macOS).
 | Parameter | Range | Default |
 |---|---|---|
 | Volume | 0% - 100% | 50.0% |
+| Attack | 1 - 5000 ms | 10 ms |
+| Decay | 1 - 5000 ms | 300 ms |
+| Sustain | 0% - 100% | 80.0% |
+| Release | 1 - 5000 ms | 200 ms |
+| Voices | 1 - 10 | 4 |
 | Bypass | on / off | off |
 
 ## Build

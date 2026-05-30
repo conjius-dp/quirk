@@ -104,6 +104,21 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
     endforeach()
 endif()
 
+# --- Screenshot CLI ---
+add_executable(QuirkScreenshot
+    Tools/Screenshot.cpp
+)
+
+target_include_directories(QuirkScreenshot PRIVATE Source)
+
+target_link_libraries(QuirkScreenshot
+    PRIVATE
+        Quirk
+        QuirkBinaryData
+        juce::juce_audio_utils
+        juce::juce_gui_basics
+)
+
 # --- Tests ---
 add_executable(QuirkTests
     Tests/TestBezierCurve.cpp

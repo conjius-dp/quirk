@@ -35,7 +35,7 @@ public:
         float parentH = sh;
         if (auto* editor = getParentComponent())
             parentH = static_cast<float>(editor->getHeight());
-        const float knobShiftBase = 103.0f;
+        const float knobShiftBase = 80.7f;
         const float knobShift = knobShiftBase * (parentH / static_cast<float>(KnobDesign::defaultHeight));
 
         float d = juce::jmin(juce::jmin(sw, sh) * 0.78f, sw * 0.60f);
@@ -75,6 +75,7 @@ public:
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseDoubleClick(const juce::MouseEvent& e) override;
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
 
     void setChromeVisible(bool visible);
 
@@ -120,6 +121,21 @@ private:
     void updateSnapAnimation(juce::Slider& slider, SliderAnimation& anim);
 
     int lastCurveVersion = -1;
+
+    bool voiceMinusHoverTarget_ = false;
+    bool voicePlusHoverTarget_ = false;
+    float voiceMinusHoverProgress_ = 0.0f;
+    float voicePlusHoverProgress_ = 0.0f;
+    float voiceMinusClickProgress_ = 0.0f;
+    float voicePlusClickProgress_ = 0.0f;
+
+    int faderPillHover_ = -1;
+    bool volumePillHover_ = false;
+
+    juce::Slider* pillDragSlider_ = nullptr;
+    float pillDragStartY_ = 0.0f;
+    double pillDragStartValue_ = 0.0;
+    float pillDragSensitivity_ = 200.0f;
 
     struct GraphCoords
     {

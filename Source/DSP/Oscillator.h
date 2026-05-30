@@ -14,6 +14,7 @@ public:
                      const float* lut, const float* leftLut, int lutSize,
                      float volume);
     bool isActive() const { return envelope_.isActive(); }
+    int getCurrentNote() const { return currentNote_; }
 
 private:
     double sampleRate_ = 44100.0;

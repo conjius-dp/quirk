@@ -4,6 +4,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include "DSP/Oscillator.h"
 #include "DSP/BezierCurve.h"
+#include "DSP/VoiceAllocator.h"
 #include "KnobDesign.h"
 
 class QuirkAudioProcessor : public juce::AudioProcessor
@@ -60,7 +61,11 @@ public:
 
 private:
     juce::AudioProcessorValueTreeState apvts;
-    Oscillator oscillator_;
+    Oscillator voices_[VoiceAlloc::kMaxVoices];
+    int voiceAge_[VoiceAlloc::kMaxVoices] = {};
+    int nextAge_ = 0;
+    int lastVoiceCount_ = 4;
+    std::vector<float> voiceBuffer_;
     BezierCurve bezierCurve_;
     BezierCurve leftBezierCurve_;
     float lutBuffers_[2][BezierCurve::kLutSize]{};

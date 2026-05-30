@@ -121,6 +121,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout QuirkAudioProcessor::createP
         juce::ParameterID("release", 1), "Release",
         juce::NormalisableRange<float>(0.0f, 2000.0f, 1.0f), 300.0f));
 
+    params.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID("voices", 1), "Voices", 1, 10, 4));
+
     addCurveParams(params, "rc_", true);
     addCurveParams(params, "lc_", false);
 
@@ -138,9 +141,11 @@ void QuirkAudioProcessor::setCurrentProgram(int) {}
 const juce::String QuirkAudioProcessor::getProgramName(int) { return {}; }
 void QuirkAudioProcessor::changeProgramName(int, const juce::String&) {}
 
-void QuirkAudioProcessor::prepareToPlay(double sampleRate, int)
+void QuirkAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    oscillator_.prepare(sampleRate);
+    for (int i = 0; i < VoiceAlloc::kMaxVoices; ++i)
+        voices_[i].prepare(sampleRate);
+    voiceBuffer_.resize(static_cast<size_t>(samplesPerBlock));
 }
 
 void QuirkAudioProcessor::releaseResources() {}
@@ -169,15 +174,35 @@ void QuirkAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         return;
     }
 
+    int voiceCount = static_cast<int>(apvts.getRawParameterValue("voices")->load());
+
+    if (voiceCount < lastVoiceCount_)
+    {
+        for (int i = voiceCount; i < lastVoiceCount_; ++i)
+            voices_[i].noteOff(-1);
+    }
+    lastVoiceCount_ = voiceCount;
+
     for (const auto metadata : midiMessages)
     {
         auto msg = metadata.getMessage();
         if (msg.isNoteOn())
-            oscillator_.noteOn(msg.getNoteNumber(), msg.getFloatVelocity());
+        {
+            int v = VoiceAlloc::findVoice(voices_, voiceAge_, voiceCount,
+                                          msg.getNoteNumber());
+            voices_[v].noteOn(msg.getNoteNumber(), msg.getFloatVelocity());
+            voiceAge_[v] = nextAge_++;
+        }
         else if (msg.isNoteOff())
-            oscillator_.noteOff(msg.getNoteNumber());
+        {
+            for (int i = 0; i < VoiceAlloc::kMaxVoices; ++i)
+                voices_[i].noteOff(msg.getNoteNumber());
+        }
         else if (msg.isAllNotesOff() || msg.isAllSoundOff())
-            oscillator_.noteOff(-1);
+        {
+            for (int i = 0; i < VoiceAlloc::kMaxVoices; ++i)
+                voices_[i].noteOff(-1);
+        }
     }
     midiMessages.clear();
 
@@ -188,14 +213,25 @@ void QuirkAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     float decayMs   = apvts.getRawParameterValue("decay")->load();
     float sustainPct = apvts.getRawParameterValue("sustain")->load();
     float releaseMs = apvts.getRawParameterValue("release")->load();
-    oscillator_.setADSR(attackMs, decayMs, sustainPct / 100.0f, releaseMs);
 
     int readIdx = activeLutIndex_.load(std::memory_order_acquire);
     float volume = apvts.getRawParameterValue("volume")->load();
 
-    oscillator_.renderBlock(buffer.getWritePointer(0), numSamples,
-                            lutBuffers_[readIdx], leftLutBuffers_[readIdx],
-                            BezierCurve::kLutSize, volume);
+    float* outPtr = buffer.getWritePointer(0);
+
+    for (int v = 0; v < VoiceAlloc::kMaxVoices; ++v)
+    {
+        voices_[v].setADSR(attackMs, decayMs, sustainPct / 100.0f, releaseMs);
+
+        if (!voices_[v].isActive()) continue;
+
+        voices_[v].renderBlock(voiceBuffer_.data(), numSamples,
+                               lutBuffers_[readIdx], leftLutBuffers_[readIdx],
+                               BezierCurve::kLutSize, volume);
+
+        for (int s = 0; s < numSamples; ++s)
+            outPtr[s] += voiceBuffer_[s];
+    }
 
     for (int ch = 1; ch < numCh; ++ch)
         buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);

@@ -21,7 +21,7 @@ namespace KnobDesign
     inline constexpr float rotationStartAngle = -135.0f;
     inline constexpr float rotationEndAngle   =  135.0f;
 
-    inline constexpr float labelFontScale    = 0.18f;
+    inline constexpr float labelFontScale    = 0.126f;
     inline constexpr float textBoxFontScale  = 0.06f;
 
     inline constexpr int   defaultWidth      = 650;
@@ -119,7 +119,7 @@ public:
         float parentH = 0.0f;
         if (auto* editor = slider.getParentComponent())
             parentH = static_cast<float>(editor->getHeight());
-        const float knobShiftBase = 103.0f;
+        const float knobShiftBase = 80.7f;
         const float knobShiftDown = knobShiftBase * (parentH > 0.0f
                                              ? parentH / static_cast<float>(KnobDesign::defaultHeight)
                                              : 1.0f);
@@ -304,22 +304,27 @@ public:
         g.setColour(juce::Colour(0xff2a1800));
         g.fillRoundedRectangle(trackX, trackY, trackW, trackH, 1.0f * sF);
 
+        float hoverProgress = static_cast<float>(
+            slider.getProperties().getWithDefault("hoverProgress", 0.0));
+        auto interactiveColour = KnobDesign::accentColour
+            .interpolatedWith(KnobDesign::accentHoverColour, hoverProgress);
+
         float fillTop = sliderPos;
         float fillH = trackY + trackH - fillTop;
         if (fillH > 0.0f)
         {
-            g.setColour(KnobDesign::accentColour);
+            g.setColour(interactiveColour);
             g.fillRoundedRectangle(trackX, fillTop, trackW, fillH, 1.0f * sF);
         }
 
-        float tickX = trackX + trackW + 4.0f * sF;
+        float tickX = trackX + trackW + 15.0f * sF;
         float tickW = 8.0f * sF;
         g.setColour(juce::Colour(0xff6a4200));
         for (int i = 0; i < 5; ++i)
         {
             float frac = static_cast<float>(i) / 4.0f;
             float ty = trackY + frac * trackH;
-            float th = (i == 0 || i == 2 || i == 4) ? 4.0f * sF : 2.0f * sF;
+            float th = 2.0f * sF;
             g.fillRect(tickX, ty - th * 0.5f, tickW, th);
         }
 
@@ -330,12 +335,7 @@ public:
         float capY = sliderPos - capH * 0.5f;
         juce::Rectangle<float> capRect(capX, capY, capW, capH);
 
-        float hoverProgress = static_cast<float>(
-            slider.getProperties().getWithDefault("hoverProgress", 0.0));
-        auto capColour = KnobDesign::accentColour
-            .interpolatedWith(KnobDesign::accentHoverColour, hoverProgress);
-
-        g.setColour(capColour);
+        g.setColour(interactiveColour);
         g.fillRoundedRectangle(capRect, capR);
         g.setColour(KnobDesign::bgColour);
         g.drawRoundedRectangle(capRect, capR, 3.0f * sF);

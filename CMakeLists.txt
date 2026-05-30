@@ -108,6 +108,7 @@ endif()
 add_executable(QuirkTests
     Tests/TestBezierCurve.cpp
     Tests/TestADSREnvelope.cpp
+    Tests/TestPolyVoices.cpp
 )
 
 target_include_directories(QuirkTests PRIVATE Source)
